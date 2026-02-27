@@ -1,0 +1,34 @@
+# === User data ===
+Brain/
+
+# === Internal documents ===
+document/
+Brain_기획안*.md
+
+# === Internal tools ===
+tools/
+
+# === Personal settings ===
+.claude/
+.mcp.json
+CLAUDE.md
+
+# === Temp files ===
+tmp_intent.json
+scratchpad/
+
+# === Node.js ===
+node_modules/
+*.log
+npm-debug.log*
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
