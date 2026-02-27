@@ -443,17 +443,13 @@ footer {
 .license {
   color: var(--text-secondary);
   font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
 }
 
 .footer-company-logo {
-  height: 24px;
+  display: block;
+  margin: var(--space-md) auto 0;
+  height: 60px;
   width: auto;
-  vertical-align: middle;
-  opacity: 0.8;
 }
 
 /* ==========================================================================
