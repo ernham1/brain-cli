@@ -153,6 +153,11 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
+## Contact
+
+- **Email**: ernham1@gmail.com
+- **Issues**: [GitHub Issues](https://github.com/ernham1/brain-cli/issues)
+
 ## License
 
 [MIT](LICENSE) — **NeuralFlux**
