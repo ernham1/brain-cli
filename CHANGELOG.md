@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-02-27
+
+### Added
+- Language selection at the start of `brain-cli setup` (English / 한국어)
+- Full i18n support for all setup prompts, labels, and generated output
+- `getPersonalityTypes(lang)`, `getCoreTraits(lang)`, and other getter functions for localized choices
+- `lang` field in persona config — persists language preference
+
+### Changed
+- `generateClaudeMd()` and `generateBrainDoc()` accept optional `lang` parameter
+- All hardcoded Korean strings extracted into `L` (Labels) i18n map
+- Backward compatible — existing setups default to Korean (`ko`)
+
 ## [1.2.0] - 2025-02-25
 
 ### Added
