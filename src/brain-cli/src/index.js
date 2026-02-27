@@ -15,7 +15,7 @@ const program = new Command();
 program
   .name("brain-cli")
   .description("Brain 장기기억 저장소 CLI")
-  .version("1.3.0");
+  .version("1.3.1");
 
 // --- write 명령 (BWT 실행) ---
 program

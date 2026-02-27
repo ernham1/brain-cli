@@ -1,4 +1,4 @@
-# @ernham/brain-cli
+# Open Brain (@ernham/brain-cli)
 
 Persistent long-term memory CLI for AI agents. Manage external memory that persists across sessions and projects.
 

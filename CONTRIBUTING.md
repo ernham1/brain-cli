@@ -1,6 +1,6 @@
-# Contributing to Brain CLI
+# Contributing to Open Brain
 
-Thank you for your interest in contributing to Brain CLI! This guide will help you get started.
+Thank you for your interest in contributing to Open Brain! This guide will help you get started.
 
 ## Development Setup
 

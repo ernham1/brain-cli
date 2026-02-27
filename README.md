@@ -1,4 +1,4 @@
-# Brain CLI
+# Open Brain
 
 **Persistent long-term memory for AI agents**
 
@@ -6,11 +6,11 @@
 [![license](https://img.shields.io/npm/l/@ernham/brain-cli)](LICENSE)
 [![node](https://img.shields.io/node/v/@ernham/brain-cli)](package.json)
 
-Brain CLI gives AI agents a durable, structured memory that survives across sessions, projects, and context windows. Write once, recall anywhere — with transactional safety.
+Open Brain gives AI agents a durable, structured memory that survives across sessions, projects, and context windows. Write once, recall anywhere — with transactional safety.
 
-## Why Brain CLI?
+## Why Open Brain?
 
-| Problem | Brain CLI |
+| Problem | Open Brain |
 |---------|-----------|
 | Context window resets every session | Persistent `~/Brain/` store on disk |
 | Memories are unstructured text blobs | 14-field typed records with scope, tags, and lifecycle |
@@ -116,7 +116,7 @@ Each memory is stored as a 14-field JSONL record:
 
 ## How It Compares
 
-| | Brain CLI | Letta (MemGPT) | Mem0 |
+| | Open Brain | Letta (MemGPT) | Mem0 |
 |---|-----------|-----------------|------|
 | **Architecture** | CLI-first, local files | Server-based, REST API | Cloud/self-hosted API |
 | **Storage** | JSONL + Markdown on disk | PostgreSQL + vector DB | Vector DB + graph |
@@ -126,13 +126,13 @@ Each memory is stored as a 14-field JSONL record:
 | **Persona system** | Built-in interactive setup | Manual configuration | Not included |
 | **Cost** | Free (local) | Free (self-hosted) / paid | Free tier / paid |
 
-Brain CLI is designed for **individual developers and small teams** who want their AI agent to remember things without running infrastructure.
+Open Brain is designed for **individual developers and small teams** who want their AI agent to remember things without running infrastructure.
 
 ## Integration with Claude Code
 
-Brain CLI is designed to work seamlessly with [Claude Code](https://claude.ai/claude-code):
+Open Brain is designed to work seamlessly with [Claude Code](https://claude.ai/claude-code):
 
-1. **On install**, Brain CLI appends usage instructions to `~/.claude/CLAUDE.md`
+1. **On install**, Open Brain appends usage instructions to `~/.claude/CLAUDE.md`
 2. **On session start**, the agent runs `brain-cli recall` to load relevant memories
 3. **During work**, the agent stores discoveries via `brain-cli write`
 4. **Persona** settings are reflected in Claude Code's behavior automatically
