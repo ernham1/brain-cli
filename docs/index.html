@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- REQ-067: SEO 메타 태그 -->
+  <title>Open Brain — Persistent Long-Term Memory for AI Agents</title>
+  <meta name="description" content="Give your AI agent durable, structured memory that survives across sessions. Transactional safety, zero dependencies, framework-agnostic.">
+  <meta property="og:title" content="Open Brain">
+  <meta property="og:description" content="Persistent long-term memory for AI agents">
+  <meta property="og:url" content="https://ernham1.github.io/brain-cli/">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ========== B02: Hero Section ========== -->
+  <section class="hero">
+    <div class="container hero-content">
+      <!-- REQ-010: 로고 + 타이틀 + 서브타이틀 -->
+      <div class="hero-logo">&#129504;</div>
+      <h1>Open Brain</h1>
+      <p class="hero-subtitle">Persistent long-term memory for AI agents</p>
+      <!-- REQ-011: 태그라인 -->
+      <p class="tagline">Write once, recall anywhere &mdash; with transactional safety.</p>
+      <!-- REQ-012 + REQ-013: CTA 버튼 -->
+      <div class="hero-cta">
+        <button class="btn-primary cta-install" onclick="copyInstall(this)">
+          <code>npm install -g @ernham/brain-cli</code>
+          <span class="copy-hint">Click to copy</span>
+        </button>
+        <a href="https://github.com/ernham1/brain-cli" class="btn-ghost" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== B03: Problem → Solution ========== -->
+  <section id="problem-solution">
+    <div class="container">
+      <!-- REQ-020: 섹션 타이틀 -->
+      <h2>Why Open Brain?</h2>
+      <!-- REQ-021 + REQ-023: 5개 카드 그리드 -->
+      <div class="problem-grid">
+        <!-- REQ-022 + REQ-024: 카드 1 -->
+        <div class="card problem-card">
+          <div class="card-icons">&#128260; &rarr; &#128190;</div>
+          <p class="problem">Context window resets every session</p>
+          <p class="solution">Persistent <code>~/Brain/</code> store on disk</p>
+        </div>
+        <!-- 카드 2 -->
+        <div class="card problem-card">
+          <div class="card-icons">&#128221; &rarr; &#128202;</div>
+          <p class="problem">Memories are unstructured text blobs</p>
+          <p class="solution">14-field typed records with scope, tags, lifecycle</p>
+        </div>
+        <!-- 카드 3 -->
+        <div class="card problem-card">
+          <div class="card-icons">&#128165; &rarr; &#128737;&#65039;</div>
+          <p class="problem">Writes can corrupt state on crash</p>
+          <p class="solution">9-step BWT transaction with atomic rename &amp; rollback</p>
+        </div>
+        <!-- 카드 4 -->
+        <div class="card problem-card">
+          <div class="card-icons">&#128012; &rarr; &#9889;</div>
+          <p class="problem">Search requires loading everything</p>
+          <p class="solution">6-stage optimized search via digest + index</p>
+        </div>
+        <!-- 카드 5 -->
+        <div class="card problem-card">
+          <div class="card-icons">&#128274; &rarr; &#128275;</div>
+          <p class="problem">Tied to one framework or provider</p>
+          <p class="solution">Framework-agnostic CLI &mdash; works with any agent</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== B04: Architecture ========== -->
+  <section id="architecture">
+    <div class="container">
+      <!-- REQ-030: 섹션 타이틀 -->
+      <h2>Architecture</h2>
+      <!-- REQ-034: 2열 레이아웃 -->
+      <div class="arch-grid">
+        <!-- REQ-031 + REQ-032: BWT 9-Step -->
+        <div class="card arch-bwt">
+          <h3>BWT &mdash; Brain Write Transaction</h3>
+          <ol class="bwt-steps">
+            <li><span class="step-num">Step 1</span> <span class="check">&#10003;</span> Intent validation</li>
+            <li><span class="step-num">Step 2</span> <span class="check">&#10003;</span> .bak backup creation</li>
+            <li><span class="step-num">Step 3</span> <span class="check">&#10003;</span> Directory creation</li>
+            <li><span class="step-num">Step 4</span> <span class="check">&#10003;</span> Document .tmp write</li>
+            <li><span class="step-num">Step 5</span> <span class="check">&#10003;</span> Index .tmp update</li>
+            <li><span class="step-num">Step 6</span> <span class="check">&#10003;</span> Manifest .tmp update</li>
+            <li><span class="step-num">Step 7</span> <span class="check">&#10003;</span> Digest .tmp update</li>
+            <li><span class="step-num">Step 8</span> <span class="check">&#10003;</span> Validate integrity</li>
+            <li><span class="step-num">Step 9</span> <span class="check">&#10003;</span> Atomic rename</li>
+          </ol>
+          <p class="warning">&#9888;&#65039; If any step fails &rarr; full rollback</p>
+        </div>
+        <!-- REQ-033 + REQ-035: 디렉토리 구조 -->
+        <div class="card arch-dir">
+          <h3>Directory Structure</h3>
+          <pre class="code-block"><code>~/Brain/
+├── 00_user/        User preferences
+├── 10_projects/    Per-project memories
+├── 20_agents/      Agent configurations
+├── 30_topics/      General topics
+├── 90_index/       Index files
+└── 99_policy/      Operation policies</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== B05: Features Grid ========== -->
+  <section id="features">
+    <div class="container">
+      <!-- REQ-040: 섹션 타이틀 -->
+      <h2>Features</h2>
+      <!-- REQ-041 + REQ-042 + REQ-043: 6개 카드 3x2 -->
+      <div class="features-grid">
+        <div class="card feature-card">
+          <span class="icon">&#128203;</span>
+          <h3>14-Field Record Schema</h3>
+          <p>Typed records with scope, tags, status, content hash</p>
+        </div>
+        <div class="card feature-card">
+          <span class="icon">&#128737;&#65039;</span>
+          <h3>9-Step BWT Transaction</h3>
+          <p>Atomic writes with backup and auto-rollback</p>
+        </div>
+        <div class="card feature-card">
+          <span class="icon">&#9889;</span>
+          <h3>6-Stage Search Pipeline</h3>
+          <p>Digest-first search for instant recall</p>
+        </div>
+        <div class="card feature-card">
+          <span class="icon">&#127917;</span>
+          <h3>Interactive Persona Setup</h3>
+          <p>Agent personality, emotions, user info (EN/KO)</p>
+        </div>
+        <div class="card feature-card">
+          <span class="icon">&#128230;</span>
+          <h3>Zero External Dependencies</h3>
+          <p>Node.js only &mdash; no API keys, no servers, no cost</p>
+        </div>
+        <div class="card feature-card">
+          <span class="icon">&#128279;</span>
+          <h3>Framework Agnostic</h3>
+          <p>Works with Claude Code, Cursor, or any AI agent</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== B06: Comparison Table ========== -->
+  <section id="comparison">
+    <div class="container">
+      <!-- REQ-050: 섹션 타이틀 -->
+      <h2>How It Compares</h2>
+      <!-- REQ-051 + REQ-052 + REQ-053: 비교 테이블 -->
+      <div class="table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="highlight-col">Open Brain</th>
+              <th>Letta (MemGPT)</th>
+              <th>Mem0</th>
+              <th>OpenClaw</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Architecture</strong></td>
+              <td class="highlight-col">CLI-first, local files</td>
+              <td>Server-based, REST API</td>
+              <td>Cloud/self-hosted API</td>
+              <td>Agent workspace, local files</td>
+            </tr>
+            <tr>
+              <td><strong>Storage</strong></td>
+              <td class="highlight-col">JSONL + Markdown</td>
+              <td>PostgreSQL + vector DB</td>
+              <td>Vector DB + graph</td>
+              <td>Plain Markdown</td>
+            </tr>
+            <tr>
+              <td><strong>Transaction safety</strong></td>
+              <td class="highlight-col">9-step BWT with rollback</td>
+              <td>None</td>
+              <td>None</td>
+              <td>None</td>
+            </tr>
+            <tr>
+              <td><strong>Search</strong></td>
+              <td class="highlight-col">Digest + index (local)</td>
+              <td>Vector similarity</td>
+              <td>Vector + graph</td>
+              <td>BM25 + vector (API key)</td>
+            </tr>
+            <tr>
+              <td><strong>Setup</strong></td>
+              <td class="highlight-col"><code>npm install -g</code></td>
+              <td>Docker + server</td>
+              <td>API key + SDK</td>
+              <td>npm + API key</td>
+            </tr>
+            <tr>
+              <td><strong>Framework lock-in</strong></td>
+              <td class="highlight-col">None</td>
+              <td>Python SDK</td>
+              <td>Python/JS SDK</td>
+              <td>OpenClaw agent only</td>
+            </tr>
+            <tr>
+              <td><strong>Persona system</strong></td>
+              <td class="highlight-col">Built-in interactive</td>
+              <td>Manual config</td>
+              <td>Not included</td>
+              <td>Not included</td>
+            </tr>
+            <tr>
+              <td><strong>Cost</strong></td>
+              <td class="highlight-col">Free (local)</td>
+              <td>Free (self-hosted) / paid</td>
+              <td>Free tier / paid</td>
+              <td>Free + embedding API cost</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== B07: Quick Start + Footer ========== -->
+  <section id="quickstart">
+    <div class="container">
+      <!-- REQ-060: 섹션 타이틀 -->
+      <h2>Get Started in 30 Seconds</h2>
+      <!-- REQ-061 + REQ-063: 3단계 코드 블록 -->
+      <div class="quickstart-code">
+        <!-- REQ-062: Copy 버튼 -->
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre class="code-block"><code><span class="code-comment"># 1. Install</span>
+npm install -g @ernham/brain-cli
+
+<span class="code-comment"># 2. Setup your agent persona</span>
+brain-cli setup
+
+<span class="code-comment"># 3. Recall memories at session start</span>
+brain-cli recall -b -g "project keywords"</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- REQ-064 + REQ-065 + REQ-066: Footer -->
+  <footer>
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <span class="footer-logo">&#129504;</span>
+        <strong>Open Brain</strong>
+        <p>Persistent long-term memory for AI agents</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/ernham1/brain-cli" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.npmjs.com/package/@ernham/brain-cli" target="_blank" rel="noopener">npm</a>
+        <a href="mailto:ernham1@gmail.com">Contact</a>
+      </div>
+      <p class="license">MIT License &mdash; NeuralFlux</p>
+    </div>
+  </footer>
+
+  <!-- REQ-012 + REQ-062: 클립보드 복사 JS (최소한) -->
+  <script>
+    function copyInstall(btn) {
+      navigator.clipboard.writeText('npm install -g @ernham/brain-cli').then(function() {
+        var hint = btn.querySelector('.copy-hint');
+        if (hint) { hint.textContent = 'Copied!'; setTimeout(function() { hint.textContent = 'Click to copy'; }, 2000); }
+      });
+    }
+    function copyCode(btn) {
+      var code = btn.nextElementSibling.textContent;
+      navigator.clipboard.writeText(code).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+  </script>
+
+</body>
+</html>

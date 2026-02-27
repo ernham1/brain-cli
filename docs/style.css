@@ -1,0 +1,499 @@
+/* ==========================================================================
+   Open Brain Landing Page — style.css
+   B01 LayoutFoundation: 전역 CSS 변수, 타이포그래피, 간격, 반응형, 공통 스타일
+   ========================================================================== */
+
+/* REQ-001: CSS 변수 색상 팔레트 (10개) */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-code: #1c2128;
+  --border-color: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-yellow: #d29922;
+  --accent-red: #f85149;
+
+  /* REQ-003: 간격 시스템 (6단계) */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+}
+
+/* REQ-002: 타이포그래피 시스템 */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+code, pre {
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* REQ-004: 반응형 — 컨테이너 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+/* REQ-005: 공통 섹션 스타일 */
+section {
+  padding: var(--space-xl) 0;
+}
+
+/* REQ-005: 카드 공통 스타일 */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+}
+
+/* REQ-005: Primary 버튼 */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+/* REQ-005: Ghost 버튼 */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent-blue);
+  text-decoration: none;
+}
+
+/* REQ-005: 코드 블록 */
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* ==========================================================================
+   B02: Hero Section
+   ========================================================================== */
+
+/* REQ-014: Hero 배경 그래디언트 */
+.hero {
+  padding: var(--space-2xl) 0;
+  background: radial-gradient(circle at 50% 0%, rgba(88,166,255,0.08), transparent 60%);
+  /* REQ-015: 하단 구분선 */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hero-content {
+  text-align: center;
+}
+
+/* REQ-010: 로고 */
+.hero-logo {
+  font-size: 60px;
+  margin-bottom: var(--space-md);
+}
+
+/* REQ-010: 서브타이틀 */
+.hero-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  margin-top: var(--space-sm);
+}
+
+/* REQ-011: 태그라인 */
+.tagline {
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+/* REQ-012 + REQ-013: CTA 버튼 */
+.hero-cta {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cta-install {
+  position: relative;
+}
+
+.cta-install code {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.copy-hint {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-left: var(--space-sm);
+}
+
+/* ==========================================================================
+   B03: Problem → Solution
+   ========================================================================== */
+
+/* REQ-021: 5개 카드 2열 그리드 */
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+/* REQ-022: 카드 아이콘/텍스트 */
+.problem-card .card-icons {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-md);
+}
+
+.problem-card .problem {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-sm);
+}
+
+.problem-card .solution {
+  color: var(--accent-green);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+/* ==========================================================================
+   B04: Architecture
+   ========================================================================== */
+
+/* REQ-034: 2열 레이아웃 */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+/* REQ-031: BWT Steps */
+.arch-bwt h3 {
+  margin-bottom: var(--space-md);
+}
+
+.bwt-steps {
+  list-style: none;
+  padding: 0;
+}
+
+.bwt-steps li {
+  padding: var(--space-xs) 0;
+  font-size: 0.95rem;
+}
+
+/* REQ-032: Step 색상 */
+.step-num {
+  color: var(--accent-blue);
+  font-weight: 600;
+  margin-right: var(--space-xs);
+}
+
+.check {
+  color: var(--accent-green);
+  margin-right: var(--space-xs);
+}
+
+.warning {
+  color: var(--accent-yellow);
+  margin-top: var(--space-md);
+  font-size: 0.9rem;
+}
+
+/* REQ-033 + REQ-035: 디렉토리 구조 */
+.arch-dir h3 {
+  margin-bottom: var(--space-md);
+}
+
+.arch-dir .code-block {
+  margin: 0;
+}
+
+/* ==========================================================================
+   B05: Features Grid
+   ========================================================================== */
+
+/* REQ-041: 3x2 그리드 */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+/* REQ-043: 카드 아이콘 + 타이틀 + 설명 */
+.feature-card .icon {
+  display: block;
+  font-size: 40px;
+  margin-bottom: var(--space-md);
+}
+
+.feature-card h3 {
+  margin-bottom: var(--space-sm);
+}
+
+.feature-card p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   B06: Comparison Table
+   ========================================================================== */
+
+/* REQ-053: 모바일 가로 스크롤 */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* REQ-055: 테이블 스타일 */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comparison-table th,
+.comparison-table td {
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.comparison-table thead th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+/* REQ-054: Open Brain 열 하이라이트 */
+.comparison-table .highlight-col {
+  background: rgba(63, 185, 80, 0.05);
+}
+
+.comparison-table code {
+  background: var(--bg-code);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+/* ==========================================================================
+   B07: Quick Start + Footer
+   ========================================================================== */
+
+/* REQ-063: 코드 블록 스타일 (큰 패딩) */
+.quickstart-code {
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.quickstart-code .code-block {
+  padding: 1.5rem;
+}
+
+.code-comment {
+  color: var(--text-secondary);
+}
+
+/* REQ-062: Copy 버튼 */
+.copy-btn {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.2s;
+}
+
+.copy-btn:hover {
+  color: var(--text-primary);
+}
+
+/* REQ-066: Footer 스타일 */
+footer {
+  background: var(--bg-secondary);
+  padding: var(--space-xl) 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-content {
+  text-align: center;
+}
+
+.footer-logo {
+  font-size: 1.5rem;
+  margin-right: var(--space-sm);
+}
+
+.footer-brand p {
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+}
+
+/* REQ-064: Footer 링크 */
+.footer-links {
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: center;
+  margin: var(--space-lg) 0;
+}
+
+.footer-links a {
+  color: var(--accent-blue);
+}
+
+/* REQ-065: 라이선스 */
+.license {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   반응형 오버라이드
+   ========================================================================== */
+
+/* REQ-004: 모바일 (<768px) */
+@media (max-width: 767px) {
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 1.5rem; }
+
+  .container {
+    padding: 0 var(--space-md);
+  }
+
+  section {
+    padding: var(--space-lg) 0;
+  }
+
+  .hero {
+    padding: var(--space-xl) 0;
+  }
+
+  /* B03: 1열 */
+  .problem-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* B04: 1열 */
+  .arch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* B05: 1열 */
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-cta {
+    flex-direction: column;
+  }
+}
+
+/* REQ-004: 태블릿 (768px ~ 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .container {
+    padding: 0 var(--space-lg);
+  }
+
+  /* B05: 2열 */
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
