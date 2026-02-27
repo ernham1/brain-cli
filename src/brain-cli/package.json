@@ -1,6 +1,6 @@
 {
   "name": "@ernham/brain-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Persistent long-term memory CLI for AI agents — transactional writes, optimized search, framework-agnostic",
   "repository": {
     "type": "git",
