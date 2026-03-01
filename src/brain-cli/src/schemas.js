@@ -8,7 +8,7 @@ const RECORD_FIELDS = [
 ];
 
 const SCOPE_TYPES = ["project", "agent", "user", "topic"];
-const RECORD_TYPES = ["rule", "decision", "profile", "log", "ref", "note", "candidate", "reminder", "project_state"];
+const RECORD_TYPES = ["rule", "decision", "profile", "log", "ref", "note", "candidate", "reminder", "project_state", "meta_strategy"];
 const SOURCE_TYPES = ["user_confirmed", "candidate", "chat_log", "external_doc", "inference"];
 const STATUS_VALUES = ["active", "deprecated", "archived"];
 

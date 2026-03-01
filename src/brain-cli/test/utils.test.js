@@ -131,7 +131,7 @@ describe("generateDigestLine", () => {
     const line = generateDigestLine(record);
     assert.equal(
       line,
-      "rec_proj_a_20260101_0001 | 테스트 제목 | 테스트 요약 | domain/memory,intent/retrieval | active"
+      "rec_proj_a_20260101_0001 | 테스트 제목 | 테스트 요약 | domain/memory,intent/retrieval | active |  | candidate | "
     );
   });
 
