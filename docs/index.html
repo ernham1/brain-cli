@@ -36,7 +36,9 @@
         </a>
       </div>
       <div class="hero-stats">
-        <div class="stat"><span class="stat-num">421</span><span class="stat-label">Tests Passing</span></div>
+        <div class="stat"><span class="stat-num" id="npm-downloads">—</span><span class="stat-label">Monthly Downloads</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">87</span><span class="stat-label">Tests Passing</span></div>
         <div class="stat-divider"></div>
         <div class="stat"><span class="stat-num">0</span><span class="stat-label">API Calls</span></div>
         <div class="stat-divider"></div>
@@ -351,6 +353,17 @@ brain-cli meta-learn</code></pre>
         document.getElementById(tabId).classList.add('active');
       });
     });
+
+    // Fetch npm monthly downloads
+    fetch('https://api.npmjs.org/downloads/point/last-month/@ernham/brain-cli')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var el = document.getElementById('npm-downloads');
+        if (el && data.downloads != null) {
+          el.textContent = data.downloads.toLocaleString();
+        }
+      })
+      .catch(function() {});
 
     // Subtle scroll reveal — content always visible, adds slide-up on enter
     if ('IntersectionObserver' in window) {
