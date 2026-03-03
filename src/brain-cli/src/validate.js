@@ -180,4 +180,40 @@ function rebuildDigest(brainRoot) {
   return { success: true, recordCount: records.length, backupPath };
 }
 
-module.exports = { validate, rebuildDigest };
+/**
+ * 레코드 분포 리포트를 생성한다.
+ * @param {Array} records - records.jsonl 전체 레코드
+ * @returns {{ byScopeType: Object, byScopeId: Array, staleRecords: Array }}
+ */
+function generateDistributionReport(records) {
+  const byScopeType = {};
+  const byScopeId = {};
+  const staleRecords = [];
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  for (const r of records) {
+    // scopeType별 카운트
+    byScopeType[r.scopeType] = (byScopeType[r.scopeType] || 0) + 1;
+
+    // scopeId별 카운트
+    byScopeId[r.scopeId] = (byScopeId[r.scopeId] || 0) + 1;
+
+    // 30일 이상 미갱신 active 레코드
+    if (r.status === "active" && r.updatedAt) {
+      const updatedAt = new Date(r.updatedAt).getTime();
+      if (now - updatedAt > thirtyDaysMs) {
+        staleRecords.push({ recordId: r.recordId, title: r.title, updatedAt: r.updatedAt });
+      }
+    }
+  }
+
+  // scopeId를 내림차순 정렬
+  const sortedScopeId = Object.entries(byScopeId)
+    .sort((a, b) => b[1] - a[1])
+    .map(([scopeId, count]) => ({ scopeId, count }));
+
+  return { byScopeType, byScopeId: sortedScopeId, staleRecords };
+}
+
+module.exports = { validate, rebuildDigest, generateDistributionReport };

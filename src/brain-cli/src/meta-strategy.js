@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { search, getRecordDetail } = require("./search");
+const { safeReadJson, calculateHash } = require("./utils");
 
 // REQ-109: meta_strategy 저장 경로 규칙
 const META_STRATEGY_SCOPE_TYPE = "topic";
@@ -197,6 +198,22 @@ function updateEffectivenessScore(brainRoot, strategyName, delta) {
       message: `전략 '${strategyName}' 파일 저장 실패: ${err.message}`
     };
   }
+
+  // manifest 해시 갱신 (auto feedback 후 BWT validate 실패 방지)
+  try {
+    const manifestPath = path.join(brainRoot, "90_index", "manifest.json");
+    const manifestResult = safeReadJson(manifestPath);
+    if (manifestResult.ok) {
+      const sourceRef = getMetaStrategySourceRef(strategyName);
+      const entry = manifestResult.data.files.find(f => f.path === sourceRef);
+      if (entry) {
+        entry.hash = calculateHash(contentPath);
+        entry.size = fs.statSync(contentPath).size;
+        entry.updatedAt = new Date().toISOString();
+        fs.writeFileSync(manifestPath, JSON.stringify(manifestResult.data, null, 2), "utf8");
+      }
+    }
+  } catch { /* manifest 갱신 실패는 무시 */ }
 
   // REQ-138, REQ-139: 승격/강등 알림 생성
   let message = null;

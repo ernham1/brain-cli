@@ -15,7 +15,7 @@ const {
 } = require("./utils");
 const { validateIntent, validateRecord } = require("./schemas");
 const { validate } = require("./validate");
-const { autoLink } = require("./links");
+const { autoLink, addLink } = require("./links");
 const { _loadDigest } = require("./search");
 
 /**
@@ -92,9 +92,21 @@ class BWTEngine {
       // Step 9: atomic rename
       this._commit();
 
-      // Step 9.5: 자동 링크 생성 (create 시에만, best-effort)
+      // Step 9.5: 링크 생성 (create 시, best-effort)
       let autoLinked = 0;
+      let explicitLinked = 0;
       if (parsed.action === "create") {
+        // 9.5a: LLM이 명시한 explicit links 먼저 처리
+        if (parsed.links && parsed.links.length > 0) {
+          for (const link of parsed.links) {
+            try {
+              const result = addLink(this.brainRoot, parsed.recordId, link.toId, link.linkType);
+              if (result.added) explicitLinked++;
+            } catch { /* best-effort */ }
+          }
+        }
+
+        // 9.5b: autoLink fallback (추가 발견용 — 중복은 addLink이 자동 방지)
         try {
           const digestPath = path.join(this.indexDir, "records_digest.txt");
           const existingDigest = _loadDigest(digestPath);
@@ -102,10 +114,40 @@ class BWTEngine {
             recordId: parsed.recordId,
             title: parsed.record.title || "",
             tags: parsed.record.tags || [],
+            type: parsed.record.type || null,
             status: "active"
           };
           autoLinked = autoLink(this.brainRoot, newRecord, existingDigest);
         } catch { /* 링크 실패는 무시 — 핵심 트랜잭션에 영향 없음 */ }
+      }
+
+      // Step 9.6: create 시 자동 positive feedback (30분 이내 전략 매칭)
+      if (parsed.action === "create") {
+        try {
+          const lastStratPath = path.join(this.indexDir, ".meta_last_strategy");
+          if (fs.existsSync(lastStratPath)) {
+            const lastStrat = JSON.parse(fs.readFileSync(lastStratPath, "utf8"));
+            const ageMs = Date.now() - new Date(lastStrat.timestamp).getTime();
+            if (ageMs < 30 * 60 * 1000 && lastStrat.primary) {
+              const { logFeedback } = require("./feedback-log");
+              const { updateEffectivenessScore } = require("./meta-strategy");
+              logFeedback(this.brainRoot, {
+                strategyName: lastStrat.primary.name,
+                feedbackType: "positive",
+                message: lastStrat.message,
+                score: lastStrat.primary.score
+              });
+              updateEffectivenessScore(this.brainRoot, lastStrat.primary.name, 0.1);
+            }
+          }
+        } catch { /* feedback 실패는 무시 */ }
+      }
+
+      // Step 9.7: deprecate 시 replaced_by 링크 자동 생성
+      if (parsed.action === "deprecate" && parsed.replacedBy && parsed.replacedBy !== "obsolete") {
+        try {
+          addLink(this.brainRoot, parsed.replacedBy, parsed.recordId, "replaced_by");
+        } catch { /* best-effort */ }
       }
 
       return {
@@ -115,6 +157,7 @@ class BWTEngine {
           action: parsed.action,
           recordId: parsed.recordId,
           warnings: validation.warnings,
+          explicitLinked,
           autoLinked
         }
       };

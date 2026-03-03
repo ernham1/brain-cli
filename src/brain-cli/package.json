@@ -1,6 +1,6 @@
 {
   "name": "@ernham/brain-cli",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Persistent long-term memory CLI for AI agents — transactional writes, optimized search, framework-agnostic",
   "repository": {
     "type": "git",
@@ -42,7 +42,6 @@
   ],
   "author": "고광웅 (NeuralFlux)",
   "license": "MIT",
-  "private": true,
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
     "commander": "^12.0.0"

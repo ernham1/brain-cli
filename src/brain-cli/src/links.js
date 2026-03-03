@@ -131,6 +131,48 @@ function _tagOverlap(tagsA, tagsB) {
 }
 
 /**
+ * recordId에서 scopeId를 추출한다.
+ * 예: "rec_proj_clo-telegram_20260301_0001" → "clo-telegram"
+ * @param {string} recordId
+ * @returns {string}
+ */
+function _extractScopeId(recordId) {
+  // rec_{scope}_{scopeId}_{YYYYMMDD}_{NNNN}
+  const parts = recordId.split("_");
+  if (parts.length < 5) return "";
+  // scopeId는 3번째부터 날짜 직전까지 (scopeId에 _가 포함될 수 있음)
+  return parts.slice(2, -2).join("_");
+}
+
+/**
+ * 두 레코드 간 관계에 맞는 링크 타입을 추론한다.
+ * - depends_on: 같은 scopeId + decision↔note/log 조합
+ * - see_also: 다른 scopeId + 태그 겹침
+ * - related: 기본값
+ * @param {Object} newRecord - { recordId, type, tags }
+ * @param {Object} existing - { recordId, type, tags }
+ * @returns {string}
+ */
+function _inferLinkType(newRecord, existing) {
+  const newScope = _extractScopeId(newRecord.recordId);
+  const existScope = _extractScopeId(existing.recordId);
+  const sameScopeId = newScope && existScope && newScope === existScope;
+
+  if (sameScopeId) {
+    // 같은 프로젝트 내 decision↔note/log → depends_on
+    const types = new Set([newRecord.type, existing.type]);
+    if (types.has("decision") && (types.has("note") || types.has("log"))) {
+      return "depends_on";
+    }
+  } else if (newScope && existScope) {
+    // 다른 scopeId + 태그 겹침 → see_also
+    return "see_also";
+  }
+
+  return "related";
+}
+
+/**
  * 새 레코드 생성 시 기존 레코드들과 자동으로 링크를 생성한다.
  * 조건: 태그 Jaccard ≥ 0.5 또는 제목 토큰 겹침 ≥ 50%
  * @param {string} brainRoot
@@ -162,7 +204,8 @@ function autoLink(brainRoot, newRecord, existingDigest) {
     }
 
     if (tagSim >= 0.5 || titleOverlap >= 0.5) {
-      const result = addLink(brainRoot, newRecord.recordId, existing.recordId, "related");
+      const linkType = _inferLinkType(newRecord, existing);
+      const result = addLink(brainRoot, newRecord.recordId, existing.recordId, linkType);
       if (result.added) linkCount++;
     }
   }
@@ -198,5 +241,7 @@ module.exports = {
   getLinkedBoosts,
   autoLink,
   removeLink,
-  _tagOverlap
+  _tagOverlap,
+  _extractScopeId,
+  _inferLinkType
 };

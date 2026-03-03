@@ -4,7 +4,7 @@
 const { Command } = require("commander");
 const path = require("path");
 const { BWTEngine } = require("./bwt");
-const { validate } = require("./validate");
+const { validate, generateDistributionReport } = require("./validate");
 const { getDefaultBrainRoot } = require("./utils");
 const { init } = require("./init");
 const { boot } = require("./boot");
@@ -61,6 +61,7 @@ program
   .description("Brain 인덱스 정합성 검증")
   .option("-r, --root <path>", "Brain/ 루트 경로 (미지정 시 자동 탐색)")
   .option("--full", "확장 검증 모드 (B08)")
+  .option("--report", "레코드 분포 리포트 출력")
   .action((options) => {
     try {
       const brainRoot = options.root || getDefaultBrainRoot();
@@ -81,6 +82,33 @@ program
       if (result.warnings.length > 0) {
         console.log("\nWarnings:");
         result.warnings.forEach(w => console.log(`  - ${w}`));
+      }
+
+      if (options.report) {
+        const { readJsonl } = require("./utils");
+        const records = readJsonl(path.join(brainRoot, "90_index", "records.jsonl"));
+        const report = generateDistributionReport(records);
+
+        console.log("\n=== 레코드 분포 리포트 ===");
+        console.log("\n[scopeType별]");
+        for (const [type, count] of Object.entries(report.byScopeType)) {
+          console.log(`  ${type}: ${count}건`);
+        }
+
+        console.log("\n[scopeId별 — 상위 15]");
+        for (const { scopeId, count } of report.byScopeId.slice(0, 15)) {
+          console.log(`  ${scopeId}: ${count}건`);
+        }
+
+        if (report.staleRecords.length > 0) {
+          console.log(`\n[30일 이상 미갱신 active 레코드 — ${report.staleRecords.length}건]`);
+          for (const r of report.staleRecords.slice(0, 10)) {
+            console.log(`  ${r.recordId}: ${r.title} (${r.updatedAt})`);
+          }
+          if (report.staleRecords.length > 10) {
+            console.log(`  ... 외 ${report.staleRecords.length - 10}건`);
+          }
+        }
       }
 
       if (!result.passed) process.exit(1);
@@ -267,7 +295,23 @@ program
           }
         }
       } else {
-        // Phase 1: 기존 search() 경로 (변경 없음)
+        // Phase 1: 기존 search() 경로 + classify best-effort
+        try {
+          const { classify } = require("./classifier");
+          const { loadMetaStrategies } = require("./meta-strategy");
+          const { _saveLastStrategy } = require("./meta-recall");
+          const { loadSynonyms } = require("./utils");
+
+          const metaData = loadMetaStrategies(brainRoot);
+          if (metaData.strategies.length > 0) {
+            const synonymMap = loadSynonyms(brainRoot);
+            const classification = classify(options.goal, metaData.strategies, synonymMap);
+            if (classification.matched) {
+              _saveLastStrategy(brainRoot, classification, options.goal);
+            }
+          }
+        } catch { /* classify 실패는 recall 결과에 영향 없음 */ }
+
         const searchResult = search(brainRoot, {
           scopeType: options.scopeType,
           scopeId: options.scopeId,

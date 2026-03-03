@@ -120,6 +120,22 @@ function validateIntent(intent) {
       break;
   }
 
+  // links 검증 (optional, create/update 시)
+  if (intent.links !== undefined && (intent.action === "create" || intent.action === "update")) {
+    if (!Array.isArray(intent.links)) {
+      errors.push("links는 배열이어야 합니다");
+    } else {
+      const { LINK_TYPES } = require("./links");
+      for (let i = 0; i < intent.links.length; i++) {
+        const link = intent.links[i];
+        if (!link.toId) errors.push(`links[${i}]: toId 필수`);
+        if (!link.linkType || !LINK_TYPES.includes(link.linkType)) {
+          errors.push(`links[${i}]: linkType 오류 (allowed: ${LINK_TYPES.join(", ")})`);
+        }
+      }
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 

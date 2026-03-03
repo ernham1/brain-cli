@@ -8,7 +8,8 @@ const os = require("os");
 
 const {
   addLink, removeLink, getLinksFor, getLinkedBoosts,
-  autoLink, readLinks, writeLinks, _tagOverlap, LINK_TYPES
+  autoLink, readLinks, writeLinks, _tagOverlap, LINK_TYPES,
+  _extractScopeId, _inferLinkType
 } = require("../src/links");
 
 // 픽스처 헬퍼
@@ -224,5 +225,98 @@ describe("links: LINK_TYPES", () => {
     assert.ok(LINK_TYPES.includes("replaced_by"));
     assert.ok(LINK_TYPES.includes("depends_on"));
     assert.ok(LINK_TYPES.includes("see_also"));
+  });
+});
+
+// --- _extractScopeId ---
+
+describe("links: _extractScopeId", () => {
+  it("표준 recordId에서 scopeId를 추출한다", () => {
+    assert.equal(_extractScopeId("rec_proj_clo-telegram_20260301_0001"), "clo-telegram");
+  });
+
+  it("scopeId에 _가 포함된 경우 올바르게 추출한다", () => {
+    assert.equal(_extractScopeId("rec_proj_my_app_20260301_0001"), "my_app");
+  });
+
+  it("짧은 recordId는 빈 문자열 반환", () => {
+    assert.equal(_extractScopeId("rec_proj"), "");
+  });
+});
+
+// --- _inferLinkType ---
+
+describe("links: _inferLinkType", () => {
+  it("같은 scopeId + decision↔note → depends_on", () => {
+    const newRec = { recordId: "rec_proj_myapp_20260303_0002", type: "decision" };
+    const existing = { recordId: "rec_proj_myapp_20260301_0001", type: "note" };
+    assert.equal(_inferLinkType(newRec, existing), "depends_on");
+  });
+
+  it("같은 scopeId + decision↔log → depends_on", () => {
+    const newRec = { recordId: "rec_proj_myapp_20260303_0002", type: "log" };
+    const existing = { recordId: "rec_proj_myapp_20260301_0001", type: "decision" };
+    assert.equal(_inferLinkType(newRec, existing), "depends_on");
+  });
+
+  it("다른 scopeId + 태그 겹침 → see_also", () => {
+    const newRec = { recordId: "rec_proj_app-a_20260303_0001", type: "note" };
+    const existing = { recordId: "rec_proj_app-b_20260301_0001", type: "note" };
+    assert.equal(_inferLinkType(newRec, existing), "see_also");
+  });
+
+  it("같은 scopeId + note↔note → related (decision 아님)", () => {
+    const newRec = { recordId: "rec_proj_myapp_20260303_0002", type: "note" };
+    const existing = { recordId: "rec_proj_myapp_20260301_0001", type: "note" };
+    assert.equal(_inferLinkType(newRec, existing), "related");
+  });
+});
+
+// --- autoLink 타입 추론 통합 ---
+
+describe("links: autoLink 타입 추론", () => {
+  let brainRoot;
+
+  before(() => { brainRoot = createLinksBrain(); });
+  after(() => { fs.rmSync(brainRoot, { recursive: true, force: true }); });
+
+  it("같은 scopeId의 decision↔note는 depends_on 링크 생성", () => {
+    const newRecord = {
+      recordId: "rec_proj_testapp_20260303_0002",
+      title: "인증 방식 결정",
+      tags: ["domain/auth", "intent/decision"],
+      type: "decision",
+      status: "active"
+    };
+    const existingDigest = [
+      { recordId: "rec_proj_testapp_20260301_0001", title: "인증 방식 분석", tags: ["domain/auth", "intent/decision"], type: "note", status: "active" }
+    ];
+
+    const count = autoLink(brainRoot, newRecord, existingDigest);
+    assert.equal(count, 1);
+
+    const links = readLinks(brainRoot);
+    const link = links.find(l => l.fromId === "rec_proj_testapp_20260303_0002");
+    assert.equal(link.linkType, "depends_on");
+  });
+
+  it("다른 scopeId면 see_also 링크 생성", () => {
+    const newRecord = {
+      recordId: "rec_proj_other-proj_20260303_0001",
+      title: "인증 프레임워크 비교",
+      tags: ["domain/auth", "intent/reference"],
+      type: "note",
+      status: "active"
+    };
+    const existingDigest = [
+      { recordId: "rec_proj_testapp_20260301_0001", title: "인증 프레임워크 평가", tags: ["domain/auth", "intent/reference"], type: "note", status: "active" }
+    ];
+
+    const count = autoLink(brainRoot, newRecord, existingDigest);
+    assert.equal(count, 1);
+
+    const links = readLinks(brainRoot);
+    const link = links.find(l => l.fromId === "rec_proj_other-proj_20260303_0001");
+    assert.equal(link.linkType, "see_also");
   });
 });
