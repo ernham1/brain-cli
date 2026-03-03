@@ -3,27 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- REQ-067: SEO 메타 태그 -->
-  <title>Open Brain — Persistent Long-Term Memory for AI Agents</title>
-  <meta name="description" content="Give your AI agent durable, structured memory that survives across sessions. Transactional safety, zero dependencies, framework-agnostic.">
-  <meta property="og:title" content="Open Brain">
-  <meta property="og:description" content="Persistent long-term memory for AI agents">
+  <title>Engram — Persistent Long-Term Memory for AI Agents</title>
+  <meta name="description" content="Give your AI agent durable, structured memory that survives across sessions. Self-improving memory with transactional safety, zero dependencies, framework-agnostic.">
+  <meta property="og:title" content="Engram">
+  <meta property="og:description" content="Engram — Persistent long-term memory for AI agents. Self-improving, transactional, framework-agnostic.">
   <meta property="og:url" content="https://ernham1.github.io/brain-cli/">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="https://ernham1.github.io/brain-cli/img/og-preview.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- ========== B02: Hero Section ========== -->
+  <!-- Hero Section -->
   <section class="hero">
+    <div class="hero-bg-grid"></div>
     <div class="container hero-content">
-      <!-- REQ-010: 로고 + 타이틀 + 서브타이틀 -->
-      <div class="hero-logo">&#129504;</div>
-      <h1>Open Brain</h1>
+      <div class="hero-badge">Open Source &middot; MIT License</div>
+      <h1>En<span class="gradient-text">gram</span></h1>
       <p class="hero-subtitle">Persistent long-term memory for AI agents</p>
-      <!-- REQ-011: 태그라인 -->
-      <p class="tagline">Write once, recall anywhere &mdash; with transactional safety.</p>
-      <!-- REQ-012 + REQ-013: CTA 버튼 -->
+      <p class="tagline">Your AI forgets everything every session. Engram fixes that.</p>
       <div class="hero-cta">
         <button class="btn-primary cta-install" onclick="copyInstall(this)">
           <code>npm install -g @ernham/brain-cli</code>
@@ -34,43 +35,39 @@
           View on GitHub
         </a>
       </div>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num">421</span><span class="stat-label">Tests Passing</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">0</span><span class="stat-label">API Calls</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">9</span><span class="stat-label">Step Transactions</span></div>
+      </div>
     </div>
   </section>
 
-  <!-- ========== B03: Problem → Solution ========== -->
+  <!-- Problem → Solution -->
   <section id="problem-solution">
     <div class="container">
-      <!-- REQ-020: 섹션 타이틀 -->
-      <h2>Why Open Brain?</h2>
-      <!-- REQ-021 + REQ-023: 5개 카드 그리드 -->
+      <h2>Why Engram?</h2>
+      <p class="section-subtitle">AI agents are powerful but forgetful. Engram gives them durable memory.</p>
       <div class="problem-grid">
-        <!-- REQ-022 + REQ-024: 카드 1 -->
         <div class="card problem-card">
-          <div class="card-icons">&#128260; &rarr; &#128190;</div>
+          <div class="card-icon-row"><span class="icon-before">&#128260;</span><span class="icon-arrow">&rarr;</span><span class="icon-after">&#128190;</span></div>
           <p class="problem">Context window resets every session</p>
           <p class="solution">Persistent <code>~/Brain/</code> store on disk</p>
         </div>
-        <!-- 카드 2 -->
         <div class="card problem-card">
-          <div class="card-icons">&#128221; &rarr; &#128202;</div>
+          <div class="card-icon-row"><span class="icon-before">&#128221;</span><span class="icon-arrow">&rarr;</span><span class="icon-after">&#128202;</span></div>
           <p class="problem">Memories are unstructured text blobs</p>
           <p class="solution">14-field typed records with scope, tags, lifecycle</p>
         </div>
-        <!-- 카드 3 -->
         <div class="card problem-card">
-          <div class="card-icons">&#128165; &rarr; &#128737;&#65039;</div>
+          <div class="card-icon-row"><span class="icon-before">&#128165;</span><span class="icon-arrow">&rarr;</span><span class="icon-after">&#128737;&#65039;</span></div>
           <p class="problem">Writes can corrupt state on crash</p>
           <p class="solution">9-step BWT transaction with atomic rename &amp; rollback</p>
         </div>
-        <!-- 카드 4 -->
         <div class="card problem-card">
-          <div class="card-icons">&#128012; &rarr; &#9889;</div>
-          <p class="problem">Search requires loading everything</p>
-          <p class="solution">6-stage optimized search via digest + index</p>
-        </div>
-        <!-- 카드 5 -->
-        <div class="card problem-card">
-          <div class="card-icons">&#128274; &rarr; &#128275;</div>
+          <div class="card-icon-row"><span class="icon-before">&#128274;</span><span class="icon-arrow">&rarr;</span><span class="icon-after">&#128275;</span></div>
           <p class="problem">Tied to one framework or provider</p>
           <p class="solution">Framework-agnostic CLI &mdash; works with any agent</p>
         </div>
@@ -78,100 +75,113 @@
     </div>
   </section>
 
-  <!-- ========== B04: Architecture ========== -->
+  <!-- Features Grid -->
+  <section id="features">
+    <div class="container">
+      <h2>Features</h2>
+      <p class="section-subtitle">Everything your agent needs to remember, learn, and grow.</p>
+      <div class="features-grid">
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#129504;</span></div>
+          <h3>Self-Improving Memory</h3>
+          <p>AI registers thinking strategies, gets feedback, and auto-tunes which patterns to use. Memory that learns from itself.</p>
+          <span class="feature-tag tag-advanced">Advanced</span>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#128279;</span></div>
+          <h3>Memory Graph</h3>
+          <p>Memories form a connected graph, not a flat list. Recall one memory and related memories surface together.</p>
+          <span class="feature-tag tag-advanced">Advanced</span>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#128737;&#65039;</span></div>
+          <h3>9-Step BWT Transaction</h3>
+          <p>Every write is atomic with backup and auto-rollback. Your memory store never corrupts, even on crash.</p>
+          <span class="feature-tag tag-core">Core</span>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#127917;</span></div>
+          <h3>Interactive Persona Setup</h3>
+          <p>Define your agent's personality, emotions, and user preferences through a guided setup wizard.</p>
+          <span class="feature-tag tag-core">Core</span>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#128230;</span></div>
+          <h3>Zero External Dependencies</h3>
+          <p>Node.js only &mdash; no API keys, no cloud servers, no vector databases, no recurring cost.</p>
+          <span class="feature-tag tag-core">Core</span>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon-wrap"><span class="icon">&#9889;</span></div>
+          <h3>Framework Agnostic</h3>
+          <p>Works with Claude Code, Cursor, Windsurf, or any AI agent that can run shell commands.</p>
+          <span class="feature-tag tag-core">Core</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
   <section id="architecture">
     <div class="container">
-      <!-- REQ-030: 섹션 타이틀 -->
       <h2>Architecture</h2>
-      <!-- REQ-034: 2열 레이아웃 -->
+      <p class="section-subtitle">Simple on the surface. Robust underneath.</p>
       <div class="arch-grid">
-        <!-- REQ-031 + REQ-032: BWT 9-Step -->
         <div class="card arch-bwt">
           <h3>BWT &mdash; Brain Write Transaction</h3>
           <ol class="bwt-steps">
-            <li><span class="step-num">Step 1</span> <span class="check">&#10003;</span> Intent validation</li>
-            <li><span class="step-num">Step 2</span> <span class="check">&#10003;</span> .bak backup creation</li>
-            <li><span class="step-num">Step 3</span> <span class="check">&#10003;</span> Directory creation</li>
-            <li><span class="step-num">Step 4</span> <span class="check">&#10003;</span> Document .tmp write</li>
-            <li><span class="step-num">Step 5</span> <span class="check">&#10003;</span> Index .tmp update</li>
-            <li><span class="step-num">Step 6</span> <span class="check">&#10003;</span> Manifest .tmp update</li>
-            <li><span class="step-num">Step 7</span> <span class="check">&#10003;</span> Digest .tmp update</li>
-            <li><span class="step-num">Step 8</span> <span class="check">&#10003;</span> Validate integrity</li>
-            <li><span class="step-num">Step 9</span> <span class="check">&#10003;</span> Atomic rename</li>
+            <li><span class="step-num">01</span> Intent validation</li>
+            <li><span class="step-num">02</span> .bak backup creation</li>
+            <li><span class="step-num">03</span> Directory creation</li>
+            <li><span class="step-num">04</span> Document .tmp write</li>
+            <li><span class="step-num">05</span> Index .tmp update</li>
+            <li><span class="step-num">06</span> Manifest .tmp update</li>
+            <li><span class="step-num">07</span> Digest .tmp update</li>
+            <li><span class="step-num">08</span> Validate integrity</li>
+            <li class="step-final"><span class="step-num">09</span> Atomic rename &check;</li>
           </ol>
-          <p class="warning">&#9888;&#65039; If any step fails &rarr; full rollback</p>
+          <p class="warning">If any step fails &rarr; full automatic rollback</p>
         </div>
-        <!-- REQ-033 + REQ-035: 디렉토리 구조 -->
         <div class="card arch-dir">
           <h3>Directory Structure</h3>
           <pre class="code-block"><code>~/Brain/
-├── 00_user/        User preferences
-├── 10_projects/    Per-project memories
-├── 20_agents/      Agent configurations
-├── 30_topics/      General topics
-├── 90_index/       Index files
-└── 99_policy/      Operation policies</code></pre>
+├── 00_user/        <span class="code-comment">User preferences</span>
+├── 10_projects/    <span class="code-comment">Per-project memories</span>
+├── 20_agents/      <span class="code-comment">Agent configurations</span>
+├── 30_topics/      <span class="code-comment">General topics</span>
+├── 90_index/       <span class="code-comment">Index files</span>
+└── 99_policy/      <span class="code-comment">Operation policies</span></code></pre>
+          <div class="arch-meta-flow">
+            <h4>Meta-Learning Flow</h4>
+            <div class="flow-diagram">
+              <span class="flow-step">meta-seed</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-step">Use strategy</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-step">meta-feedback</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-step">meta-learn</span>
+            </div>
+            <p class="flow-desc">Strategies that work get boosted. Strategies that fail get demoted.</p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ========== B05: Features Grid ========== -->
-  <section id="features">
-    <div class="container">
-      <!-- REQ-040: 섹션 타이틀 -->
-      <h2>Features</h2>
-      <!-- REQ-041 + REQ-042 + REQ-043: 6개 카드 3x2 -->
-      <div class="features-grid">
-        <div class="card feature-card">
-          <span class="icon">&#128203;</span>
-          <h3>14-Field Record Schema</h3>
-          <p>Typed records with scope, tags, status, content hash</p>
-        </div>
-        <div class="card feature-card">
-          <span class="icon">&#128737;&#65039;</span>
-          <h3>9-Step BWT Transaction</h3>
-          <p>Atomic writes with backup and auto-rollback</p>
-        </div>
-        <div class="card feature-card">
-          <span class="icon">&#9889;</span>
-          <h3>6-Stage Search Pipeline</h3>
-          <p>Digest-first search for instant recall</p>
-        </div>
-        <div class="card feature-card">
-          <span class="icon">&#127917;</span>
-          <h3>Interactive Persona Setup</h3>
-          <p>Agent personality, emotions, user info (EN/KO)</p>
-        </div>
-        <div class="card feature-card">
-          <span class="icon">&#128230;</span>
-          <h3>Zero External Dependencies</h3>
-          <p>Node.js only &mdash; no API keys, no servers, no cost</p>
-        </div>
-        <div class="card feature-card">
-          <span class="icon">&#128279;</span>
-          <h3>Framework Agnostic</h3>
-          <p>Works with Claude Code, Cursor, or any AI agent</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== B06: Comparison Table ========== -->
+  <!-- Comparison Table -->
   <section id="comparison">
     <div class="container">
-      <!-- REQ-050: 섹션 타이틀 -->
       <h2>How It Compares</h2>
-      <!-- REQ-051 + REQ-052 + REQ-053: 비교 테이블 -->
+      <p class="section-subtitle">Different tools for different needs. Here's where Engram stands.</p>
       <div class="table-wrapper">
         <table class="comparison-table">
           <thead>
             <tr>
               <th></th>
-              <th class="highlight-col">Open Brain</th>
+              <th class="highlight-col">Engram</th>
               <th>Letta (MemGPT)</th>
               <th>Mem0</th>
-              <th>OpenClaw</th>
             </tr>
           </thead>
           <tbody>
@@ -179,57 +189,61 @@
               <td><strong>Architecture</strong></td>
               <td class="highlight-col">CLI-first, local files</td>
               <td>Server-based, REST API</td>
-              <td>Cloud/self-hosted API</td>
-              <td>Agent workspace, local files</td>
+              <td>Cloud / self-hosted API</td>
             </tr>
             <tr>
               <td><strong>Storage</strong></td>
               <td class="highlight-col">JSONL + Markdown</td>
-              <td>PostgreSQL + vector DB</td>
-              <td>Vector DB + graph</td>
-              <td>Plain Markdown</td>
+              <td>PostgreSQL + pgvector</td>
+              <td>Vector DB + graph DB</td>
             </tr>
             <tr>
-              <td><strong>Transaction safety</strong></td>
+              <td><strong>Write safety</strong></td>
               <td class="highlight-col">9-step BWT with rollback</td>
-              <td>None</td>
-              <td>None</td>
-              <td>None</td>
+              <td>DB-level ACID</td>
+              <td>DB-level</td>
             </tr>
             <tr>
               <td><strong>Search</strong></td>
               <td class="highlight-col">Digest + index (local)</td>
               <td>Vector similarity</td>
-              <td>Vector + graph</td>
-              <td>BM25 + vector (API key)</td>
+              <td>Vector + graph hybrid</td>
+            </tr>
+            <tr>
+              <td><strong>Self-improving</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Meta-learning loop</td>
+              <td><span class="na">&mdash;</span> Not included</td>
+              <td><span class="na">&mdash;</span> Not included</td>
+            </tr>
+            <tr>
+              <td><strong>Memory graph</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Built-in links</td>
+              <td><span class="na">&mdash;</span> Not included</td>
+              <td><span class="check">&#10003;</span> Graph relations</td>
             </tr>
             <tr>
               <td><strong>Setup</strong></td>
-              <td class="highlight-col"><code>npm install -g</code></td>
-              <td>Docker + server</td>
+              <td class="highlight-col"><span class="check">&#10003;</span> <code>npm i -g</code></td>
+              <td>Docker / pip / Cloud</td>
               <td>API key + SDK</td>
-              <td>npm + API key</td>
             </tr>
             <tr>
-              <td><strong>Framework lock-in</strong></td>
-              <td class="highlight-col">None</td>
-              <td>Python SDK</td>
-              <td>Python/JS SDK</td>
-              <td>OpenClaw agent only</td>
+              <td><strong>Framework</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Any (CLI-based)</td>
+              <td>Python / TS SDK</td>
+              <td>Python / JS SDK</td>
             </tr>
             <tr>
-              <td><strong>Persona system</strong></td>
-              <td class="highlight-col">Built-in interactive</td>
-              <td>Manual config</td>
-              <td>Not included</td>
-              <td>Not included</td>
+              <td><strong>Persona</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Interactive wizard</td>
+              <td><span class="check">&#10003;</span> Built-in memory blocks</td>
+              <td><span class="na">&mdash;</span> Not included</td>
             </tr>
             <tr>
               <td><strong>Cost</strong></td>
-              <td class="highlight-col">Free (local)</td>
-              <td>Free (self-hosted) / paid</td>
-              <td>Free tier / paid</td>
-              <td>Free + embedding API cost</td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Free (fully local)</td>
+              <td>Free tier / $20+ / self-hosted</td>
+              <td>Free tier / $19+</td>
             </tr>
           </tbody>
         </table>
@@ -237,33 +251,68 @@
     </div>
   </section>
 
-  <!-- ========== B07: Quick Start + Footer ========== -->
+  <!-- Quick Start -->
   <section id="quickstart">
     <div class="container">
-      <!-- REQ-060: 섹션 타이틀 -->
       <h2>Get Started in 30 Seconds</h2>
-      <!-- REQ-061 + REQ-063: 3단계 코드 블록 -->
+      <div class="quickstart-tabs">
+        <button class="tab-btn active" data-tab="install">1. Install</button>
+        <button class="tab-btn" data-tab="recall">2. Recall</button>
+        <button class="tab-btn" data-tab="write">3. Write</button>
+        <button class="tab-btn" data-tab="meta">4. Meta-learn</button>
+      </div>
       <div class="quickstart-code">
-        <!-- REQ-062: Copy 버튼 -->
         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-        <pre class="code-block"><code><span class="code-comment"># 1. Install</span>
+        <div class="tab-panel active" id="tab-install">
+          <pre class="code-block"><code><span class="code-comment"># Install globally via npm</span>
 npm install -g @ernham/brain-cli
 
-<span class="code-comment"># 2. Setup your agent persona</span>
-brain-cli setup
+<span class="code-comment"># Initialize your Brain directory</span>
+brain-cli init</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-recall">
+          <pre class="code-block"><code><span class="code-comment"># Recall memories at session start</span>
+brain-cli recall -b -g "project keywords"
 
-<span class="code-comment"># 3. Recall memories at session start</span>
-brain-cli recall -b -g "project keywords"</code></pre>
+<span class="code-comment"># Brief mode (-b) for concise output</span>
+<span class="code-comment"># Adjust -g (goal) to match your context</span></code></pre>
+        </div>
+        <div class="tab-panel" id="tab-write">
+          <pre class="code-block"><code><span class="code-comment"># Store a new memory</span>
+brain-cli write '{
+  "action": "create",
+  "sourceRef": "10_projects/my-app/note.md",
+  "content": "# My Note\nImportant decision...",
+  "record": {
+    "scopeType": "project",
+    "scopeId": "my-app",
+    "type": "note",
+    "title": "Architecture decision",
+    "summary": "Chose REST over GraphQL",
+    "tags": ["domain/api", "intent/decision"],
+    "sourceType": "candidate"
+  }
+}'</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-meta">
+          <pre class="code-block"><code><span class="code-comment"># Register thinking strategies</span>
+brain-cli meta-seed
+
+<span class="code-comment"># Rate what worked</span>
+brain-cli meta-feedback positive
+
+<span class="code-comment"># Auto-improve: boost winners, demote losers</span>
+brain-cli meta-learn</code></pre>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- REQ-064 + REQ-065 + REQ-066: Footer -->
+  <!-- Footer -->
   <footer>
     <div class="container footer-content">
       <div class="footer-brand">
-        <span class="footer-logo">&#129504;</span>
-        <strong>Open Brain</strong>
+        <strong>Engram</strong>
         <p>Persistent long-term memory for AI agents</p>
       </div>
       <div class="footer-links">
@@ -276,7 +325,6 @@ brain-cli recall -b -g "project keywords"</code></pre>
     </div>
   </footer>
 
-  <!-- REQ-012 + REQ-062: 클립보드 복사 JS (최소한) -->
   <script>
     function copyInstall(btn) {
       navigator.clipboard.writeText('npm install -g @ernham/brain-cli').then(function() {
@@ -285,10 +333,40 @@ brain-cli recall -b -g "project keywords"</code></pre>
       });
     }
     function copyCode(btn) {
-      var code = btn.nextElementSibling.textContent;
-      navigator.clipboard.writeText(code).then(function() {
+      var activePanel = btn.parentElement.querySelector('.tab-panel.active');
+      var code = activePanel ? activePanel.textContent : btn.nextElementSibling.textContent;
+      navigator.clipboard.writeText(code.trim()).then(function() {
         btn.textContent = 'Copied!';
         setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+
+    // Quick Start tabs
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tabId = 'tab-' + this.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // Subtle scroll reveal — content always visible, adds slide-up on enter
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.card, .arch-meta-flow').forEach(function(el, i) {
+        el.classList.add('reveal');
+        el.style.transitionDelay = (i % 3) * 0.08 + 's';
+        observer.observe(el);
       });
     }
   </script>

@@ -1,31 +1,40 @@
 /* ==========================================================================
-   Open Brain Landing Page — style.css
-   B01 LayoutFoundation: 전역 CSS 변수, 타이포그래피, 간격, 반응형, 공통 스타일
+   Engram Landing Page — style.css
    ========================================================================== */
 
-/* REQ-001: CSS 변수 색상 팔레트 (10개) */
 :root {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-code: #1c2128;
-  --border-color: #30363d;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --accent-blue: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-yellow: #d29922;
-  --accent-red: #f85149;
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #151d2e;
+  --bg-code: #1a2332;
+  --border-color: #1e293b;
+  --border-hover: #3b82f6;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --accent-red: #ef4444;
+  --gradient-brand: linear-gradient(135deg, #3b82f6, #06b6d4);
+  --gradient-warm: linear-gradient(135deg, #8b5cf6, #3b82f6);
 
-  /* REQ-003: 간격 시스템 (6단계) */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
-  --space-lg: 2rem;
-  --space-xl: 4rem;
-  --space-2xl: 6rem;
+  --space-lg: 1.5rem;
+  --space-xl: 3rem;
+  --space-2xl: 5rem;
+  --space-3xl: 8rem;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 }
 
-/* REQ-002: 타이포그래피 시스템 */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -37,165 +46,253 @@ html {
 }
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.6;
   color: var(--text-primary);
   background: var(--bg-primary);
+  overflow-x: hidden;
 }
 
+/* Typography */
 h1 {
-  font-size: 3.5rem;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 h2 {
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.2;
   text-align: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-sm);
+  letter-spacing: -0.02em;
 }
 
 h3 {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.4;
 }
 
 code, pre {
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
 }
 
 a {
   color: var(--accent-blue);
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--accent-cyan);
 }
 
-/* REQ-004: 반응형 — 컨테이너 */
+/* Layout */
 .container {
-  max-width: 1200px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
 }
 
-/* REQ-005: 공통 섹션 스타일 */
 section {
-  padding: var(--space-xl) 0;
+  padding: var(--space-3xl) 0;
+  position: relative;
 }
 
-/* REQ-005: 카드 공통 스타일 */
+.section-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: var(--space-xl);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Cards */
 .card {
-  background: var(--bg-secondary);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-lg);
-  transition: all 0.2s ease;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-md);
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, var(--accent-blue) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .card:hover {
-  border-color: var(--accent-blue);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 60px rgba(59, 130, 246, 0.1),
+    0 0 120px rgba(6, 182, 212, 0.05);
+  border-color: transparent;
 }
 
-/* REQ-005: Primary 버튼 */
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Buttons */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
-  background: var(--accent-blue);
+  background: var(--gradient-brand);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1.75rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
-  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 }
 
-/* REQ-005: Ghost 버튼 */
 .btn-ghost {
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1.75rem;
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
   text-decoration: none;
-  transition: border-color 0.2s;
+  transition: all 0.3s;
 }
 
 .btn-ghost:hover {
   border-color: var(--accent-blue);
-  text-decoration: none;
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text-primary);
 }
 
-/* REQ-005: 코드 블록 */
+/* Code blocks */
 .code-block {
   background: var(--bg-code);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 1rem;
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
   overflow-x: auto;
 }
 
+/* Scroll reveal — always visible, subtle slide-up on enter */
+.reveal {
+  transform: translateY(16px);
+  transition: transform 0.5s ease-out;
+}
+
+.reveal.in-view {
+  transform: translateY(0);
+}
+
 /* ==========================================================================
-   B02: Hero Section
+   Hero Section
    ========================================================================== */
 
-/* REQ-014: Hero 배경 그래디언트 */
 .hero {
-  padding: var(--space-2xl) 0;
-  background: radial-gradient(circle at 50% 0%, rgba(88,166,255,0.08), transparent 60%);
-  /* REQ-015: 하단 구분선 */
-  border-bottom: 1px solid var(--border-color);
+  padding: var(--space-3xl) 0 var(--space-2xl);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(6, 182, 212, 0.06), transparent);
+}
+
+.hero-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
 }
 
 .hero-content {
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
-/* REQ-010: 로고 */
-.hero-logo {
-  font-size: 60px;
-  margin-bottom: var(--space-md);
+.hero-badge {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--accent-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  background: rgba(6, 182, 212, 0.08);
+  margin-bottom: var(--space-lg);
+  letter-spacing: 0.02em;
 }
 
-/* REQ-010: 서브타이틀 */
+/* Hero logotype — Engram as brand typography (no emoji) */
+.hero h1 {
+  font-size: clamp(3.5rem, 10vw, 6rem);
+  letter-spacing: -0.04em;
+  display: inline-block;
+  animation: title-glow 4s ease-in-out infinite;
+}
+
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 40px rgba(59, 130, 246, 0.1), 0 0 80px rgba(6, 182, 212, 0.05); }
+  50% { text-shadow: 0 0 60px rgba(59, 130, 246, 0.2), 0 0 120px rgba(6, 182, 212, 0.1); }
+}
+
 .hero-subtitle {
   color: var(--text-secondary);
   font-size: 1.25rem;
   margin-top: var(--space-sm);
+  font-weight: 400;
 }
 
-/* REQ-011: 태그라인 */
 .tagline {
-  color: var(--text-secondary);
-  font-style: italic;
+  color: var(--text-muted);
+  font-size: 1.05rem;
   margin-top: var(--space-sm);
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
-/* REQ-012 + REQ-013: CTA 버튼 */
 .hero-cta {
   display: flex;
   gap: var(--space-md);
@@ -206,38 +303,100 @@ section {
 
 .cta-install {
   position: relative;
+  flex-direction: column;
+  padding: 1rem 2rem;
 }
 
 .cta-install code {
   color: #fff;
   font-size: 0.9rem;
+  letter-spacing: 0.01em;
 }
 
 .copy-hint {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin-left: var(--space-sm);
+  font-size: 0.7rem;
+  opacity: 0.5;
+  display: block;
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-xl);
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--border-color);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-num {
+  font-size: 1.75rem;
+  font-weight: 800;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border-color);
 }
 
 /* ==========================================================================
-   B03: Problem → Solution
+   Problem → Solution
    ========================================================================== */
 
-/* REQ-021: 5개 카드 2열 그리드 */
+#problem-solution {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
 .problem-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-lg);
 }
 
-/* REQ-022: 카드 아이콘/텍스트 */
-.problem-card .card-icons {
-  font-size: 1.5rem;
-  margin-bottom: var(--space-md);
+.problem-card {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
 }
 
+.card-icon-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-size: 1.75rem;
+  margin-bottom: var(--space-lg);
+}
+
+.icon-before { opacity: 0.6; filter: grayscale(0.4); }
+.icon-arrow { color: var(--accent-blue); font-size: 1.25rem; }
+.icon-after { filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.3)); }
+
 .problem-card .problem {
-  color: var(--text-secondary);
+  color: rgba(239, 68, 68, 0.7);
   font-size: 0.9rem;
   margin-bottom: var(--space-sm);
 }
@@ -245,78 +404,44 @@ section {
 .problem-card .solution {
   color: var(--accent-green);
   font-weight: 600;
-  font-size: 1.05rem;
-}
-
-/* ==========================================================================
-   B04: Architecture
-   ========================================================================== */
-
-/* REQ-034: 2열 레이아웃 */
-.arch-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-lg);
-}
-
-/* REQ-031: BWT Steps */
-.arch-bwt h3 {
-  margin-bottom: var(--space-md);
-}
-
-.bwt-steps {
-  list-style: none;
-  padding: 0;
-}
-
-.bwt-steps li {
-  padding: var(--space-xs) 0;
   font-size: 0.95rem;
 }
 
-/* REQ-032: Step 색상 */
-.step-num {
-  color: var(--accent-blue);
-  font-weight: 600;
-  margin-right: var(--space-xs);
-}
-
-.check {
+.problem-card .solution code {
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
   color: var(--accent-green);
-  margin-right: var(--space-xs);
-}
-
-.warning {
-  color: var(--accent-yellow);
-  margin-top: var(--space-md);
-  font-size: 0.9rem;
-}
-
-/* REQ-033 + REQ-035: 디렉토리 구조 */
-.arch-dir h3 {
-  margin-bottom: var(--space-md);
-}
-
-.arch-dir .code-block {
-  margin: 0;
 }
 
 /* ==========================================================================
-   B05: Features Grid
+   Features Grid
    ========================================================================== */
 
-/* REQ-041: 3x2 그리드 */
 .features-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-lg);
 }
 
-/* REQ-043: 카드 아이콘 + 타이틀 + 설명 */
-.feature-card .icon {
-  display: block;
-  font-size: 40px;
+.feature-card {
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  position: relative;
+}
+
+.feature-icon-wrap {
   margin-bottom: var(--space-md);
+}
+
+.feature-icon-wrap .icon {
+  display: inline-block;
+  font-size: 36px;
+  width: 56px;
+  height: 56px;
+  line-height: 56px;
+  text-align: center;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .feature-card h3 {
@@ -326,18 +451,166 @@ section {
 .feature-card p {
   color: var(--text-secondary);
   font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.feature-tag {
+  display: inline-block;
+  margin-top: var(--space-md);
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.tag-core {
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.tag-advanced {
+  color: var(--accent-purple);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.08);
 }
 
 /* ==========================================================================
-   B06: Comparison Table
+   Architecture
    ========================================================================== */
 
-/* REQ-053: 모바일 가로 스크롤 */
-.table-wrapper {
-  overflow-x: auto;
+#architecture {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
-/* REQ-055: 테이블 스타일 */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.arch-bwt h3, .arch-dir h3 {
+  margin-bottom: var(--space-lg);
+}
+
+.bwt-steps {
+  list-style: none;
+  padding: 0;
+  counter-reset: none;
+}
+
+.bwt-steps li {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--border-color);
+  padding-left: var(--space-md);
+  transition: all 0.2s;
+}
+
+.bwt-steps li:hover {
+  border-left-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.bwt-steps .step-final {
+  border-left-color: var(--accent-green);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+.step-num {
+  display: inline-block;
+  color: var(--accent-blue);
+  font-weight: 700;
+  font-size: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  width: 2rem;
+  margin-right: var(--space-xs);
+}
+
+.step-final .step-num {
+  color: var(--accent-green);
+}
+
+.warning {
+  color: var(--accent-yellow);
+  margin-top: var(--space-lg);
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.arch-dir .code-block {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.arch-dir .code-block .code-comment {
+  color: var(--text-muted);
+}
+
+/* Meta-learning flow */
+.arch-meta-flow {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.arch-meta-flow h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-purple);
+  margin-bottom: var(--space-md);
+}
+
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.flow-step {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--accent-purple);
+  font-family: 'Fira Code', monospace;
+}
+
+.flow-arrow {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.flow-desc {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Comparison Table
+   ========================================================================== */
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
 .comparison-table {
   width: 100%;
   border-collapse: collapse;
@@ -345,68 +618,155 @@ section {
 
 .comparison-table th,
 .comparison-table td {
-  border: 1px solid var(--border-color);
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .comparison-table thead th {
   background: var(--bg-secondary);
   font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-color);
 }
 
-/* REQ-054: Open Brain 열 하이라이트 */
+.comparison-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.03);
+}
+
 .comparison-table .highlight-col {
-  background: rgba(63, 185, 80, 0.05);
+  background: rgba(59, 130, 246, 0.04);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.comparison-table thead .highlight-col {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--accent-blue);
+  font-weight: 700;
 }
 
 .comparison-table code {
   background: var(--bg-code);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+/* Comparison indicators */
+.check {
+  color: var(--accent-green);
+  font-weight: 700;
+  margin-right: 0.3em;
+}
+
+.na {
+  color: var(--text-muted);
+  margin-right: 0.3em;
 }
 
 /* ==========================================================================
-   B07: Quick Start + Footer
+   Quick Start
    ========================================================================== */
 
-/* REQ-063: 코드 블록 스타일 (큰 패딩) */
+#quickstart {
+  padding-bottom: var(--space-3xl);
+}
+
+/* Quick Start Tabs */
+.quickstart-tabs {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-xl);
+}
+
+.tab-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.tab-btn.active {
+  color: var(--accent-blue);
+  background: var(--bg-code);
+  border-color: var(--accent-blue);
+  border-bottom: 1px solid var(--bg-code);
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
+}
+
 .quickstart-code {
   position: relative;
-  max-width: 700px;
+  max-width: 680px;
   margin: 0 auto;
 }
 
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
 .quickstart-code .code-block {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .code-comment {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-/* REQ-062: Copy 버튼 */
 .copy-btn {
   position: absolute;
   top: var(--space-sm);
   right: var(--space-sm);
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
+  color: var(--text-muted);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
   z-index: 1;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 
 .copy-btn:hover {
   color: var(--text-primary);
+  border-color: var(--accent-blue);
 }
 
-/* REQ-066: Footer 스타일 */
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
 footer {
   background: var(--bg-secondary);
   padding: var(--space-xl) 0;
@@ -422,84 +782,99 @@ footer {
   margin-right: var(--space-sm);
 }
 
-.footer-brand p {
-  color: var(--text-secondary);
-  margin-top: var(--space-xs);
+.footer-brand strong {
+  font-size: 1.1rem;
 }
 
-/* REQ-064: Footer 링크 */
+.footer-brand p {
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+  font-size: 0.875rem;
+}
+
 .footer-links {
   display: flex;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   justify-content: center;
   margin: var(--space-lg) 0;
 }
 
 .footer-links a {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
   color: var(--accent-blue);
 }
 
-/* REQ-065: 라이선스 */
 .license {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .footer-company-logo {
   display: block;
-  margin: var(--space-md) auto 0;
-  height: 60px;
+  margin: var(--space-lg) auto 0;
+  height: 48px;
   width: auto;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.footer-company-logo:hover {
+  opacity: 1;
 }
 
 /* ==========================================================================
-   반응형 오버라이드
+   Responsive
    ========================================================================== */
 
-/* REQ-004: 모바일 (<768px) */
 @media (max-width: 767px) {
-  h1 { font-size: 2.5rem; }
-  h2 { font-size: 1.5rem; }
-
-  .container {
-    padding: 0 var(--space-md);
-  }
-
   section {
-    padding: var(--space-lg) 0;
+    padding: var(--space-2xl) 0;
   }
 
   .hero {
-    padding: var(--space-xl) 0;
+    padding: var(--space-2xl) 0 var(--space-xl);
   }
 
-  /* B03: 1열 */
-  .problem-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* B04: 1열 */
-  .arch-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* B05: 1열 */
-  .features-grid {
-    grid-template-columns: 1fr;
+  .quickstart-tabs {
+    flex-wrap: wrap;
   }
 
   .hero-cta {
     flex-direction: column;
   }
-}
 
-/* REQ-004: 태블릿 (768px ~ 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-  .container {
-    padding: 0 var(--space-lg);
+  .hero-stats {
+    gap: var(--space-lg);
   }
 
-  /* B05: 2열 */
+  .stat-num {
+    font-size: 1.25rem;
+  }
+
+  .problem-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-diagram {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
