@@ -8,6 +8,10 @@
 
 Engram gives AI agents a durable, structured memory that survives across sessions, projects, and context windows. Write once, recall anywhere — with transactional safety.
 
+<p align="center">
+  <img src="docs/img/engram-demo.gif" alt="Engram demo — before and after" width="640">
+</p>
+
 ## Why Engram?
 
 | Problem | Engram |
