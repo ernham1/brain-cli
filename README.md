@@ -120,17 +120,19 @@ Each memory is stored as a 14-field JSONL record:
 
 ## How It Compares
 
-| | Engram | Letta (MemGPT) | Mem0 |
-|---|-----------|-----------------|------|
-| **Architecture** | CLI-first, local files | Server-based, REST API | Cloud/self-hosted API |
-| **Storage** | JSONL + Markdown on disk | PostgreSQL + vector DB | Vector DB + graph |
-| **Transaction safety** | 9-step BWT with rollback | No transaction guarantees | No transaction guarantees |
-| **Setup** | `npm install -g` — zero config | Docker + server setup | API key + SDK setup |
-| **Framework lock-in** | None — any agent can shell out | Python SDK required | Python/JS SDK required |
-| **Persona system** | Built-in interactive setup | Manual configuration | Not included |
-| **Cost** | Free (local) | Free (self-hosted) / paid | Free tier / paid |
+| | Engram | claude-mem | Claude Supermemory | Mem0 |
+|---|---|---|---|---|
+| **Approach** | Structured work journal | Auto-capture recorder | Cloud memory layer | Cloud / self-hosted API |
+| **Storage** | JSONL + Markdown (local) | ChromaDB (vector) | Supermemory cloud | Vector DB + graph |
+| **Write safety** | 9-step BWT with rollback | None | None | DB-level |
+| **Search** | Keyword + tag + type index | Semantic vector search | Semantic search | Vector + graph |
+| **Self-improving** | Meta-learning loop | — | — | — |
+| **Record schema** | 14-field typed records | Unstructured chunks | Unstructured | Key-value pairs |
+| **Multi-agent** | Shared `~/Brain/` | Single instance | Cross-project | API-based |
+| **Dependencies** | Node.js only | ChromaDB + Python | Cloud account | API key + SDK |
+| **Cost** | Free forever | Free (local) | Free tier / paid | Free tier / $19+ |
 
-Engram is designed for **individual developers and small teams** who want their AI agent to remember things without running infrastructure.
+**claude-mem** is great if you want automatic capture with semantic search. **Engram** is for developers who want structured, inspectable, crash-safe memory with zero infrastructure.
 
 ## Integration with Claude Code
 

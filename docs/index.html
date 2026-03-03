@@ -182,69 +182,80 @@
             <tr>
               <th></th>
               <th class="highlight-col">Engram</th>
-              <th>Letta (MemGPT)</th>
+              <th>claude-mem</th>
+              <th>Claude Supermemory</th>
               <th>Mem0</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>Architecture</strong></td>
-              <td class="highlight-col">CLI-first, local files</td>
-              <td>Server-based, REST API</td>
+              <td><strong>Approach</strong></td>
+              <td class="highlight-col">Structured work journal</td>
+              <td>Auto-capture recorder</td>
+              <td>Cloud memory layer</td>
               <td>Cloud / self-hosted API</td>
             </tr>
             <tr>
               <td><strong>Storage</strong></td>
-              <td class="highlight-col">JSONL + Markdown</td>
-              <td>PostgreSQL + pgvector</td>
+              <td class="highlight-col">JSONL + Markdown (local)</td>
+              <td>ChromaDB (vector)</td>
+              <td>Supermemory cloud</td>
               <td>Vector DB + graph DB</td>
             </tr>
             <tr>
               <td><strong>Write safety</strong></td>
-              <td class="highlight-col">9-step BWT with rollback</td>
-              <td>DB-level ACID</td>
+              <td class="highlight-col"><span class="check">&#10003;</span> 9-step BWT with rollback</td>
+              <td><span class="na">&mdash;</span> None</td>
+              <td><span class="na">&mdash;</span> None</td>
               <td>DB-level</td>
             </tr>
             <tr>
               <td><strong>Search</strong></td>
-              <td class="highlight-col">Digest + index (local)</td>
-              <td>Vector similarity</td>
-              <td>Vector + graph hybrid</td>
+              <td class="highlight-col">Keyword + tag + type index</td>
+              <td><span class="check">&#10003;</span> Semantic vector search</td>
+              <td><span class="check">&#10003;</span> Semantic search</td>
+              <td><span class="check">&#10003;</span> Vector + graph</td>
             </tr>
             <tr>
               <td><strong>Self-improving</strong></td>
               <td class="highlight-col"><span class="check">&#10003;</span> Meta-learning loop</td>
               <td><span class="na">&mdash;</span> Not included</td>
               <td><span class="na">&mdash;</span> Not included</td>
+              <td><span class="na">&mdash;</span> Not included</td>
             </tr>
             <tr>
               <td><strong>Memory graph</strong></td>
-              <td class="highlight-col"><span class="check">&#10003;</span> Built-in links</td>
-              <td><span class="na">&mdash;</span> Not included</td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Typed links</td>
+              <td><span class="na">&mdash;</span> Flat storage</td>
+              <td><span class="na">&mdash;</span> Flat storage</td>
               <td><span class="check">&#10003;</span> Graph relations</td>
             </tr>
             <tr>
-              <td><strong>Setup</strong></td>
-              <td class="highlight-col"><span class="check">&#10003;</span> <code>npm i -g</code></td>
-              <td>Docker / pip / Cloud</td>
+              <td><strong>Record schema</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> 14-field typed records</td>
+              <td>Unstructured chunks</td>
+              <td>Unstructured</td>
+              <td>Key-value pairs</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-agent</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Shared ~/Brain/</td>
+              <td><span class="na">&mdash;</span> Single instance</td>
+              <td><span class="check">&#10003;</span> Cross-project</td>
+              <td><span class="check">&#10003;</span> API-based</td>
+            </tr>
+            <tr>
+              <td><strong>Dependencies</strong></td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Node.js only</td>
+              <td>ChromaDB + Python</td>
+              <td>Cloud account</td>
               <td>API key + SDK</td>
             </tr>
             <tr>
-              <td><strong>Framework</strong></td>
-              <td class="highlight-col"><span class="check">&#10003;</span> Any (CLI-based)</td>
-              <td>Python / TS SDK</td>
-              <td>Python / JS SDK</td>
-            </tr>
-            <tr>
-              <td><strong>Persona</strong></td>
-              <td class="highlight-col"><span class="check">&#10003;</span> Interactive wizard</td>
-              <td><span class="check">&#10003;</span> Built-in memory blocks</td>
-              <td><span class="na">&mdash;</span> Not included</td>
-            </tr>
-            <tr>
               <td><strong>Cost</strong></td>
-              <td class="highlight-col"><span class="check">&#10003;</span> Free (fully local)</td>
-              <td>Free tier / $20+ / self-hosted</td>
+              <td class="highlight-col"><span class="check">&#10003;</span> Free forever</td>
+              <td><span class="check">&#10003;</span> Free (local)</td>
+              <td>Free tier / paid</td>
               <td>Free tier / $19+</td>
             </tr>
           </tbody>

@@ -42,11 +42,12 @@ I was spending the first 10~20 minutes of every Claude Code session re-explainin
 
 I tried several existing approaches:
 - **CLAUDE.md auto-memory** — too unstructured, not searchable across projects
-- **claude-mem** — requires ChromaDB setup
-- **MemCP** — interesting but only captures on /compact
-- **Cadre** — full framework when I just needed persistent recall
+- **claude-mem** (32K+ stars) — great auto-capture, but requires ChromaDB and stores as unstructured chunks
+- **claude-supermemory** — cloud-dependent, your data leaves your machine
+- **MemCP** — 21 MCP tools, powerful but complex setup
+- **claude-cognitive** — file injection approach, no structured search
 
-None of them fit what I wanted: a **simple CLI that reads and writes local files**, with no external database and no MCP server.
+claude-mem is excellent if you want automatic capture with semantic search. But I wanted something different: **structured records I can inspect, with crash-safe writes and zero external dependencies**.
 
 ---
 
@@ -188,11 +189,10 @@ Your agent learns which thinking strategies actually work for you. Winners get b
 ### 5/7 [비교 — 공격 없이 포지셔닝]
 How it compares:
 
-Mem0: cloud API, great for scale
-Letta: self-hosted, powerful
-Engram: `npm install` — done. Fully local.
+claude-mem (32K★): auto-capture + vector search — great for "record everything"
+Engram: structured records + crash-safe writes — for "record what matters"
 
-Different tools for different needs. Engram is for devs who want memory that just works, no infra.
+Different tools for different needs. claude-mem is an auto-recorder. Engram is a work journal.
 
 ### 6/7 [사회적 증거]
 557 monthly installs. 87 tests. MIT licensed.
