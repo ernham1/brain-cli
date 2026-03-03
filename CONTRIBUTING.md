@@ -1,6 +1,6 @@
-# Contributing to Open Brain
+# Contributing to Engram
 
-Thank you for your interest in contributing to Open Brain! This guide will help you get started.
+Thank you for your interest in contributing to Engram! This guide will help you get started.
 
 ## Development Setup
 

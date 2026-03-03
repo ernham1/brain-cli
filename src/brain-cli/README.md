@@ -1,4 +1,4 @@
-# Open Brain
+# Engram
 
 **Your AI agent forgets everything every session. Brain fixes that.**
 
