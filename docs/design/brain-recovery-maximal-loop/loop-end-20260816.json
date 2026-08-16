@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2232-brm2",
+  "ts": "2026-08-16T22:32:00.000+09:00",
+  "session": "codex-desktop-brain-recovery-maximal-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_END] #데이터복구 Brain 안전 최대복구 11/11 종료 판정. fresh missing Raw 8,330 중 원문 SHA-256과 DB contentHash가 exact인 session handoff 89건을 9개 recordId allowlist batch로 복원하고 Raw·DB·JSONL·digest·manifest 5중 일치와 validate PASS를 확인했다. 잔여 8,241건은 work-log 6,483·session 1,655·기타 103으로 전수 분류했으며 archive 13,197 sections, Claude transcripts 최대 9,117 files/34,161 events, 생존 Raw와 허용 C evidence 5,980 files를 재탐색했으나 추가 exact는 0건이었다. 잔여 전부를 사유·확인 증거·다음 필요 증거가 있는 D-evidence-exhausted 원장으로 보존했다. Brain 724/724·lint, TeleClo 222/222·build, server syntax, embedding 384 finite, health 3849/3850, monitor 8,241/known 8,241/new 0, PM2 4 online, Brain rec_proj_brain_20260816_0008·Wiki·recall, 원격 recovery/20260816을 확인했다. H/E 접근·합성·삭제·unfiltered apply·main 변경은 0회다.",
+  "options": [
+    "증거 충족으로 11/11 종료",
+    "증거 부족으로 루프 재개"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

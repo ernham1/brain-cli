@@ -17,7 +17,7 @@
 | MAX-07 | 유형별 exact 재탐색 | `01-runbook.md` 순서8 | 허용 경로와 기존 생성기별 dry-run을 수행해 searched/exact/mismatch/unmatched를 원문 hash로 기록 | 도구별 plan·hash manifest | [x] | 전수 coverage 8,241=work-log archive 6,483+session transcript 1,655+기타 forensic 103; archive 13,197 sections, transcript 9,117 files/34,161 events, 허용 C 경로 5,980 files 탐색; exact union 0; H/E 0 |
 | MAX-08 | 추가 exact 후보 조건부 복원 | `01-runbook.md` 순서9 | MAX-07에서 발견된 exact 후보만 ≤10건 allowlist batch로 5중 복원; 후보 0이면 적용 0 근거 | apply/audit/monitor·target count | [x] | exact 후보 0→batch 0·Raw 생성 0·canonical 변경 0; 네 복원기 unfiltered apply 모두 exit1; monitor 8,241/known 8,241/new 0; `MAX-08-noop.json` |
 | MAX-09 | 증거 고갈 잔여 원장 | `01-runbook.md` §잔여 판정 | 미복원 전 레코드에 class·reason·searched evidence·next required evidence가 있고 합계가 monitor 잔여와 일치 | residual ledger validator | [x] | JSONL 8,241행·unique ID 8,241·monitor issue 8,241; 전 행 D-evidence-exhausted, reason/searchedEvidence/nextRequiredEvidence 존재; 독립 validator PASS |
-| MAX-10 | 전체 회귀·종료 감사 | spec-loop 종료 게이트 | 체크리스트 11/11, Brain test/lint·TeleClo test/build·server syntax·embedding·health·monitor, LOOP_END·Brain/Wiki·recovery push·bundle | fresh audit JSON·저널·recall·remote ref | [ ] | |
+| MAX-10 | 전체 회귀·종료 감사 | spec-loop 종료 게이트 | 체크리스트 11/11, Brain test/lint·TeleClo test/build·server syntax·embedding·health·monitor, LOOP_END·Brain/Wiki·recovery push·bundle | fresh audit JSON·저널·recall·remote ref | [x] | Brain 724/724+lint, TeleClo 222/222+build, server 2/2 syntax, embedding Float32Array 384 finite, health 3849/3850 ok, PM2 4 online, monitor 8,241/known 8,241/new 0; LOOP_END `dj-20260816-2232-brm2` exact 1; Brain `rec_proj_brain_20260816_0008`·Wiki·recall; recovery branch·final bundle |
 
 ## 3축 체크리스트
 
