@@ -78,7 +78,14 @@ describe("session handoff Raw reconstruction", () => {
       assert.equal(plan.totals.exactMatches, 1);
       assert.equal(fs.existsSync(path.join(root, plan.matches[0].sourceRef)), false);
 
-      const applied = applyReconstruction(root, transcripts, { limit: 1 });
+      assert.throws(
+        () => applyReconstruction(root, transcripts, { limit: 1 }),
+        /--record-id/
+      );
+      const applied = applyReconstruction(root, transcripts, {
+        limit: 1,
+        recordIds: ["rec_proj_clo-handoff_20260721_0001"]
+      });
       assert.equal(applied.created.length, 1);
       assert.equal(hashText(fs.readFileSync(path.join(root, plan.matches[0].sourceRef), "utf8")), plan.matches[0].contentHash);
     } finally {

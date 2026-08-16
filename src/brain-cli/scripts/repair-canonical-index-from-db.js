@@ -58,7 +58,7 @@ function rowToRecord(brainRoot, row) {
   };
 }
 
-function loadState(brainRoot) {
+function loadState(brainRoot, options = {}) {
   const recordsPath = path.join(brainRoot, "90_index", "records.jsonl");
   const dbPath = path.join(brainRoot, "90_index", "records.db");
   if (!fs.existsSync(recordsPath)) throw new Error(`records.jsonl 없음: ${recordsPath}`);
@@ -80,9 +80,11 @@ function loadState(brainRoot) {
     db.close();
   }
 
+  const requestedRecordIds = new Set(options.recordIds || []);
   const candidates = [];
   let dbOnlyMissingSource = 0;
   for (const row of rows) {
+    if (requestedRecordIds.size > 0 && !requestedRecordIds.has(row.record_id)) continue;
     if (jsonIds.has(row.record_id)) continue;
     const record = rowToRecord(brainRoot, row);
     if (record) candidates.push(record);
@@ -91,10 +93,11 @@ function loadState(brainRoot) {
   return { records, candidates, dbRows: rows.length, dbOnlyMissingSource };
 }
 
-function planRepair(brainRoot) {
-  const state = loadState(brainRoot);
+function planRepair(brainRoot, options = {}) {
+  const state = loadState(brainRoot, options);
   return {
     brainRoot: path.resolve(brainRoot),
+    requestedRecordIds: options.recordIds || [],
     jsonRecords: state.records.length,
     dbRecords: state.dbRows,
     recoverable: state.candidates.length,
@@ -153,15 +156,18 @@ function restoreBackups(indexDir, backupDir) {
   }
 }
 
-function applyRepair(brainRoot) {
+function applyRepair(brainRoot, options = {}) {
+  if (!Array.isArray(options.recordIds) || options.recordIds.length === 0) {
+    throw new Error("운영 적용은 --record-id=<id[,id]>를 명시해야 합니다.");
+  }
   const indexDir = path.join(brainRoot, "90_index");
   const lock = acquireLock(brainRoot, { staleMs: 30000, timeoutMs: 30000 });
   let backupDir = null;
   const tmpPaths = INDEX_FILES.map(name => path.join(indexDir, `${name}.tmp`));
   try {
-    const state = loadState(brainRoot);
+    const state = loadState(brainRoot, options);
     if (state.candidates.length === 0) {
-      return { ...planRepair(brainRoot), applied: false, recovered: 0, backupDir: null };
+      return { ...planRepair(brainRoot, options), applied: false, recovered: 0, backupDir: null };
     }
     const merged = state.records.concat(state.candidates);
     const ids = new Set();
@@ -208,9 +214,15 @@ function applyRepair(brainRoot) {
 }
 
 function main() {
-  const brainRoot = path.resolve(process.argv[2] || "");
-  if (!brainRoot) throw new Error("사용법: node repair-canonical-index-from-db.js <brainRoot> [--apply]");
-  const result = process.argv.includes("--apply") ? applyRepair(brainRoot) : planRepair(brainRoot);
+  const args = { root: null, apply: false, recordIds: [] };
+  for (const arg of process.argv.slice(2)) {
+    if (arg === "--apply") args.apply = true;
+    else if (arg.startsWith("--record-id=")) args.recordIds.push(...arg.slice(12).split(",").filter(Boolean));
+    else if (!arg.startsWith("--") && !args.root) args.root = arg;
+  }
+  if (!args.root) throw new Error("사용법: node repair-canonical-index-from-db.js <brainRoot> [--record-id=<id[,id]>] [--apply]");
+  const brainRoot = path.resolve(args.root);
+  const result = args.apply ? applyRepair(brainRoot, args) : planRepair(brainRoot, args);
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }
 

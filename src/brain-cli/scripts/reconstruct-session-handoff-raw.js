@@ -269,6 +269,9 @@ function reconstructPlan(brainRoot, transcriptRoot, options = {}) {
 }
 
 function applyReconstruction(brainRoot, transcriptRoot, options = {}) {
+  if (!Array.isArray(options.recordIds) || options.recordIds.length === 0) {
+    throw new Error("운영 적용은 --record-id=<id[,id]>를 명시해야 합니다.");
+  }
   const plan = reconstructPlan(brainRoot, transcriptRoot, options);
   const limit = Number.isFinite(options.limit) ? options.limit : Infinity;
   const selected = plan.matches.slice(0, limit);

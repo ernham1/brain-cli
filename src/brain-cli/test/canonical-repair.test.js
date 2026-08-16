@@ -61,7 +61,8 @@ describe("canonical index repair", () => {
 
   it("apply는 백업 후 같은 recordId를 JSONL/digest/manifest에 복구하고 멱등이다", () => {
     const root = createFixture();
-    const result = applyRepair(root);
+    assert.throws(() => applyRepair(root), /--record-id/);
+    const result = applyRepair(root, { recordIds: ["rec_proj_brain_20260721_0099"] });
     assert.equal(result.recovered, 1);
     assert.ok(result.backupDir && fs.existsSync(result.backupDir));
     for (const name of ["records.jsonl", "records_digest.txt", "manifest.json"]) {
@@ -72,6 +73,13 @@ describe("canonical index repair", () => {
     assert.match(fs.readFileSync(path.join(root, "90_index", "records_digest.txt"), "utf-8"), /rec_proj_brain_20260721_0099/);
     const manifest = JSON.parse(fs.readFileSync(path.join(root, "90_index", "manifest.json"), "utf-8"));
     assert.equal(manifest.files[0].path, "10_projects/brain/20260721-recover-me.md");
-    assert.equal(applyRepair(root).recovered, 0);
+    assert.equal(applyRepair(root, { recordIds: ["rec_proj_brain_20260721_0099"] }).recovered, 0);
+  });
+
+  it("recordId allowlist 밖의 DB-only 레코드는 적용 후보에서 제외한다", () => {
+    const root = createFixture();
+    const plan = planRepair(root, { recordIds: ["rec_proj_brain_20260721_missing"] });
+    assert.equal(plan.recoverable, 0);
+    assert.deepEqual(plan.requestedRecordIds, ["rec_proj_brain_20260721_missing"]);
   });
 });
