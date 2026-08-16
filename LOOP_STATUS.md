@@ -1,10 +1,10 @@
-# 루프 상태: Brain 복구 잔여 후속
-갱신: 2026-08-16 21:18
-상태: 완료
-진행: 5/5 완료
-현재: 전체 완료 — 종료 게이트 통과
-최근 완료: RES-04 독립 감사·Brain/Wiki·LOOP_END `dj-20260816-2116-brf2`
-다음: 없음 — recovery/20260816 원격 push·검증 bundle 생성 완료
+# 루프 상태: Brain 안전 최대복구
+갱신: 2026-08-16 21:24
+상태: 진행 중
+진행: 1/11 완료
+현재: MAX-01 fresh missing/exact inventory
+최근 완료: MAX-00 archive·LOOP_START `dj-20260816-2124-brm1`
+다음: MAX-02 write 도구 allowlist 잠금
 막힘: 없음
-게이트 저널: 시작 `dj-20260816-2039-brf1` / 종료 `dj-20260816-2116-brf2` / 전제 종료 `dj-20260816-2020-bor5`
-운영 영향: Raw 2건·canonical 2행 복원, TeleClo dev 의존성 보강, 서비스 중단 없음
+게이트 저널: 전제 종료 `dj-20260816-2116-brf2` / 시작 `dj-20260816-2124-brm1`
+운영 영향: 없음 — read-only inventory 단계

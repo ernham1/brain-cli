@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2124-brm1",
+  "ts": "2026-08-16T21:24:00.000+09:00",
+  "session": "codex-desktop-brain-recovery-maximal-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_START] #데이터복구 Brain 안전 최대복구 11항목 자율 시작. 익숙한 타입 근거: archive/20260816-residual-followup-completed 및 GAP-OPR-01/GAP-RM-01. 전제: dj-20260816-2116-brf2. fresh inventory 후 exact 89건을 최대 10건 allowlist batch로 먼저 복원하고, 잔여는 유형별 exact 포렌식과 증거 고갈 원장까지 진행한다. H/E 접근·합성·삭제·unfiltered bulk apply·main 변경은 제외한다.",
+  "options": [
+    "exact-only 안전 최대복구 루프 시작",
+    "현 상태를 보존하고 중단"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}
