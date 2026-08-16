@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "clo-telegram",
       script: "dist/index.js",
-      cwd: "D:/Projects/Brain/src/clo-telegram",
+      cwd: "C:/Projects/Brain/src/clo-telegram",
       env: {
         PROVIDER: "claude-code",
         MODEL: "claude-opus-5",

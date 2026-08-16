@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2020-bor5",
+  "ts": "2026-08-16T20:19:50.811+09:00",
+  "session": "codex-desktop-brain-operational-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_END] #데이터복구 Brain 운영 전체 복구 종료 판정. 14개 항목의 종료 전 감사 통과: DB 1·Raw 3(신규1/known2)·canonical 1 exact 복구, total issue 8,336→8,332, known 8,332→8,330, 신규 4→2. 원문 없는 신규 Raw 2건은 GAP-OPR-01로 합성·삭제 없이 보존. commit 134b12d·tag·bundle·origin recovery ref 검증, main 불변. Brain 715/715, clo 222/222, PM2 4서비스 online, 3849/3850 health ok, 실제 write/recall/deprecate와 Telegram message_id 72435 확인.",
+  "options": [
+    "검증된 복구 상태로 루프 종료",
+    "잔여 Raw 2건을 근거 없이 합성"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}
