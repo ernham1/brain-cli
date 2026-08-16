@@ -1,10 +1,10 @@
-# 루프 상태: Brain 운영 전체 복구
-갱신: 2026-08-16 20:20
-상태: 완료
-진행: 14/14 완료
-현재: 전체 운영 복구 완료
-최근 완료: OPR-13 fresh 회귀·서비스·원격·bundle·rollback 독립 감사 및 LOOP_END
-다음: GAP-OPR-01 exact 원문 발견 시 잔여 Raw 2건 후속 복구
-막힘: 없음 — 외부 작업 승인 완료. 신규 Raw 2건은 GAP-OPR-01 보존
-게이트 저널: 시작 dj-20260816-1917-bor1 / 종료 dj-20260816-2020-bor5
-운영 영향: Brain 관련 PM2 4서비스 online, 3849/3850 health ok, clo watch enabled
+# 루프 상태: Brain 복구 잔여 후속
+갱신: 2026-08-16 20:42
+상태: 진행 중
+진행: 1/5 완료
+현재: RES-01 Raw 2건 exact 증거 재탐색
+최근 완료: RES-00 archive SHA·LOOP_START `dj-20260816-2039-brf1`
+다음: RES-02 exact 발견분 조건부 복구
+막힘: 없음
+게이트 저널: 시작 `dj-20260816-2039-brf1` / 전제 종료 `dj-20260816-2020-bor5`
+운영 영향: 없음 — read-only exact 탐색 단계

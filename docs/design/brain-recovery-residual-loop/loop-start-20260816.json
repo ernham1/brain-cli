@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2039-brf1",
+  "ts": "2026-08-16T20:39:00.000+09:00",
+  "session": "codex-desktop-brain-recovery-residual-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_START] #데이터복구 Brain 복구 잔여 후속 5항목 자율 시작. 익숙한 타입 근거: GAP-OPR-01 및 archive/20260816-operational-recovery-completed. 전제: dj-20260816-2020-bor5. exact 원문 2건을 허용된 Brain 증거 경로에서 재탐색하고, 발견분만 hash exact로 복구하며, 의존성은 non-force 호환 수정만 적용한다. H/E 접근·합성·삭제·force update·main 변경은 제외한다.",
+  "options": [
+    "exact-only·non-force 후속 루프 시작",
+    "잔여 항목을 보존하고 중단"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}
