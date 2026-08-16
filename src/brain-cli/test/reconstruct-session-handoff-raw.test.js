@@ -85,4 +85,70 @@ describe("session handoff Raw reconstruction", () => {
       fs.rmSync(parent, { recursive: true, force: true });
     }
   });
+
+  it("uses an adjacent Raw digest snapshot when current DB metadata changed later", () => {
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), "brain-handoff-adjacent-"));
+    const root = init(parent).brainRoot;
+    const transcripts = path.join(parent, "transcripts");
+    fs.mkdirSync(transcripts, { recursive: true });
+    try {
+      const previous = [];
+      const db = getDb(root);
+      try {
+        for (let index = 1; index <= 5; index++) {
+          const record = {
+            recordId: `rec_topic_work-log_20260722_000${index}`,
+            scopeType: "topic", scopeId: "work-log", type: "log",
+            title: `작업 로그 ${index}`,
+            summary: `[16:0${index}] Write: historical-${index}.md`,
+            tags: ["domain/dev", "intent/retrieval"], sourceType: "candidate",
+            sourceRef: `30_topics/work-log/historical-${index}.md`,
+            status: "active", updatedAt: `2026-07-22T07:0${index}:00.000Z`,
+            contentHash: hashText(`raw-${index}`)
+          };
+          upsertRecord(db, record);
+          previous.push(record);
+        }
+        const historicalRecent = previous.map(generateDigestLine).join("\n");
+        const targetRef = "10_projects/clo-handoff/sessions/vscode-20260722-161400-deadbeef.md";
+        upsertRecord(db, {
+          recordId: "rec_proj_clo-handoff_20260722_0099", scopeType: "project", scopeId: "clo-handoff",
+          type: "note", title: "VS Code 핸드오프 — 2026-07-22 16:14",
+          summary: "VS Code 세션 종료 (D:\\Projects\\Demo)",
+          tags: ["domain/memory", "intent/handoff"], sourceType: "candidate",
+          sourceRef: targetRef, status: "active", updatedAt: "2026-07-22T07:14:01.000Z",
+          contentHash: hashText(renderHandoff(sessionParts(targetRef), "D:\\Projects\\Demo", "(git 정보 없음)", historicalRecent))
+        });
+        const neighborRef = "10_projects/clo-handoff/sessions/vscode-20260722-161401-feedface.md";
+        const neighborContent = renderHandoff(sessionParts(neighborRef), "D:\\Projects\\Demo", "(git 정보 없음)", historicalRecent);
+        upsertRecord(db, {
+          recordId: "rec_proj_clo-handoff_20260722_0100", scopeType: "project", scopeId: "clo-handoff",
+          type: "note", title: "VS Code 핸드오프 — 2026-07-22 16:14",
+          summary: "VS Code 세션 종료 (D:\\Projects\\Demo)",
+          tags: ["domain/memory", "intent/handoff"], sourceType: "candidate",
+          sourceRef: neighborRef, status: "active", updatedAt: "2026-07-22T07:14:02.000Z",
+          contentHash: hashText(neighborContent)
+        });
+        const neighborPath = path.join(root, neighborRef);
+        fs.mkdirSync(path.dirname(neighborPath), { recursive: true });
+        fs.writeFileSync(neighborPath, neighborContent, "utf8");
+        upsertRecord(db, { ...previous[4], summary: "later metadata changed" });
+      } finally { db.close(); }
+      fs.writeFileSync(
+        path.join(transcripts, "deadbeef-0000-0000-0000-000000000000.jsonl"),
+        JSON.stringify({ type: "attachment", cwd: "D:\\Projects\\Demo" }) + "\n", "utf8"
+      );
+      const plan = reconstructPlan(root, transcripts);
+      const match = plan.matches.find(item => item.recordId === "rec_proj_clo-handoff_20260722_0099");
+      assert.ok(match);
+      assert.equal(match.evidence.recentBrainSource, "adjacent-raw");
+      assert.equal(match.evidence.snapshotRecordId, "rec_proj_clo-handoff_20260722_0100");
+
+      const filteredOut = reconstructPlan(root, transcripts, {
+        recordIds: ["rec_proj_clo-handoff_20260722_nonexistent"]
+      });
+      assert.equal(filteredOut.totals.targets, 0);
+      assert.equal(filteredOut.totals.exactMatches, 0);
+    } finally { fs.rmSync(parent, { recursive: true, force: true }); }
+  });
 });

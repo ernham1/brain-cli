@@ -67,6 +67,12 @@ function renderHandoff(parts, cwd, gitStatus, recentBrain) {
   ].join("\n");
 }
 
+function recentBrainFromHandoff(value) {
+  const marker = "## 오늘 Brain에 저장된 레코드\n";
+  const markerIndex = String(value || "").indexOf(marker);
+  return markerIndex >= 0 ? String(value).slice(markerIndex + marker.length) : null;
+}
+
 function transcriptFiles(root) {
   const byPrefix = new Map();
   const stack = [path.resolve(root)];
@@ -137,7 +143,7 @@ function upperBoundByRowId(entries, rowid) {
   return low;
 }
 
-function reconstructPlan(brainRoot, transcriptRoot) {
+function reconstructPlan(brainRoot, transcriptRoot, options = {}) {
   const root = path.resolve(brainRoot);
   const db = new Database(path.join(root, "90_index", "records.db"), { readonly: true, fileMustExist: true });
   let rows;
@@ -147,11 +153,24 @@ function reconstructPlan(brainRoot, transcriptRoot) {
     db.close();
   }
 
+  const requestedRecordIds = new Set(options.recordIds || []);
   const targets = rows.filter(row => {
     if (row.scope_id !== "clo-handoff" || !row.source_ref || !row.content_hash) return false;
+    if (requestedRecordIds.size > 0 && !requestedRecordIds.has(row.record_id)) return false;
     const targetPath = resolveInside(root, row.source_ref);
     return targetPath && !fs.existsSync(targetPath) && sessionParts(row.source_ref);
   });
+  const rowIndexById = new Map(rows.map((row, index) => [row.rowid, index]));
+  const adjacentSnapshots = new Map();
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    if (row.scope_id !== "clo-handoff" || !sessionParts(row.source_ref)) continue;
+    const rawPath = resolveInside(root, row.source_ref);
+    if (!rawPath || !fs.existsSync(rawPath)) continue;
+    const recentBrain = recentBrainFromHandoff(fs.readFileSync(rawPath, "utf8"));
+    if (recentBrain !== null) adjacentSnapshots.set(index, { recordId: row.record_id, recentBrain });
+  }
+
   const targetDays = [...new Set(targets.map(row => sessionParts(row.source_ref).day))];
   const digestByDay = new Map(targetDays.map(day => [day, []]));
   for (const row of rows) {
@@ -173,10 +192,25 @@ function reconstructPlan(brainRoot, transcriptRoot) {
     const end = upperBoundByRowId(digestEntries, target.rowid);
     const recentRows = digestEntries.slice(Math.max(0, end - 5), end);
     const recentCandidates = [
-      recentRows.length > 0 ? recentRows.map(entry => entry.line).join("\n") : "(오늘 저장 없음)",
-      "(오늘 저장 없음)",
-      "(없음)"
+      {
+        value: recentRows.length > 0 ? recentRows.map(entry => entry.line).join("\n") : "(오늘 저장 없음)",
+        source: "current-db",
+        snapshotRecordId: null
+      },
+      { value: "(오늘 저장 없음)", source: "fallback", snapshotRecordId: null },
+      { value: "(없음)", source: "fallback", snapshotRecordId: null }
     ];
+    const targetIndex = rowIndexById.get(target.rowid);
+    for (let index = Math.max(0, targetIndex - 60); index <= Math.min(rows.length - 1, targetIndex + 60); index++) {
+      const snapshot = adjacentSnapshots.get(index);
+      if (!snapshot || snapshot.recordId === target.record_id) continue;
+      recentCandidates.push({
+        value: snapshot.recentBrain,
+        source: "adjacent-raw",
+        snapshotRecordId: snapshot.recordId
+      });
+    }
+    const uniqueRecentCandidates = [...new Map(recentCandidates.map(candidate => [candidate.value, candidate])).values()];
     const transcript = transcripts.get(parts.sessionId);
     let cwd = cwdFromSummary(target.summary);
     if (!cwd && transcript) {
@@ -190,7 +224,8 @@ function reconstructPlan(brainRoot, transcriptRoot) {
 
     let found = null;
     for (const gitStatus of ["(git 정보 없음)", "(수정 없음)"]) {
-      for (const recentBrain of [...new Set(recentCandidates)]) {
+      for (const recentCandidate of uniqueRecentCandidates) {
+        const recentBrain = recentCandidate.value;
         const content = renderHandoff(parts, cwd, gitStatus, recentBrain);
         if (hashText(content) !== target.content_hash) continue;
         found = {
@@ -202,7 +237,9 @@ function reconstructPlan(brainRoot, transcriptRoot) {
             transcript: transcript || null,
             cwdSource: cwdFromSummary(target.summary) ? "db-summary" : "transcript",
             gitStatus,
-            digestRows: recentRows.map(entry => entry.rowid)
+            digestRows: recentRows.map(entry => entry.rowid),
+            recentBrainSource: recentCandidate.source,
+            snapshotRecordId: recentCandidate.snapshotRecordId
           }
         };
         if (gitStatus === "(git 정보 없음)") variants.gitInfoMissing++;
@@ -232,7 +269,7 @@ function reconstructPlan(brainRoot, transcriptRoot) {
 }
 
 function applyReconstruction(brainRoot, transcriptRoot, options = {}) {
-  const plan = reconstructPlan(brainRoot, transcriptRoot);
+  const plan = reconstructPlan(brainRoot, transcriptRoot, options);
   const limit = Number.isFinite(options.limit) ? options.limit : Infinity;
   const selected = plan.matches.slice(0, limit);
   const lock = acquireLock(plan.brainRoot, { staleMs: 30000, timeoutMs: 30000 });
@@ -278,11 +315,12 @@ function applyReconstruction(brainRoot, transcriptRoot, options = {}) {
 }
 
 function parseArgs(argv) {
-  const parsed = { root: null, transcripts: null, output: null, apply: false, limit: Infinity };
+  const parsed = { root: null, transcripts: null, output: null, apply: false, limit: Infinity, recordIds: [] };
   for (const arg of argv) {
     if (arg === "--apply") parsed.apply = true;
     else if (arg.startsWith("--transcripts=")) parsed.transcripts = arg.slice(14);
     else if (arg.startsWith("--output=")) parsed.output = arg.slice(9);
+    else if (arg.startsWith("--record-id=")) parsed.recordIds.push(...arg.slice(12).split(",").filter(Boolean));
     else if (arg.startsWith("--limit=")) parsed.limit = Number(arg.slice(8));
     else if (!arg.startsWith("--") && !parsed.root) parsed.root = arg;
   }
@@ -292,11 +330,11 @@ function parseArgs(argv) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.root || !args.transcripts) {
-    throw new Error("사용법: node reconstruct-session-handoff-raw.js <brainRoot> --transcripts=<root> [--output=<json>] [--apply] [--limit=N]");
+    throw new Error("사용법: node reconstruct-session-handoff-raw.js <brainRoot> --transcripts=<root> [--output=<json>] [--record-id=<id[,id]>] [--apply] [--limit=N]");
   }
   const result = args.apply
     ? applyReconstruction(args.root, args.transcripts, args)
-    : reconstructPlan(args.root, args.transcripts);
+    : reconstructPlan(args.root, args.transcripts, args);
   if (args.output) {
     const outputPath = path.resolve(args.output);
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
