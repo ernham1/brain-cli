@@ -178,8 +178,8 @@ describe("REQ-100: RECORD_TYPES에 meta_strategy 추가", () => {
     }
   });
 
-  it("RECORD_TYPES 길이가 10이어야 한다", () => {
-    assert.equal(RECORD_TYPES.length, 10);
+  it("RECORD_TYPES 길이가 11이어야 한다", () => {
+    assert.equal(RECORD_TYPES.length, 11);
   });
 });
 

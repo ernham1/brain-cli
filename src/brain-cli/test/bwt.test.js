@@ -1,12 +1,13 @@
 "use strict";
 
-const { describe, it, before, after, beforeEach } = require("node:test");
+const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { BWTEngine } = require("../src/bwt");
-const { readJsonl, safeReadJson, calculateHashFromString } = require("../src/utils");
+const { BWTEngine, BWT_LOCK_TIMEOUT_MS } = require("../src/bwt");
+const { readJsonl, calculateHashFromString } = require("../src/utils");
+const { validate } = require("../src/validate");
 
 // 테스트용 Brain/ 디렉토리를 매 테스트마다 신규 생성
 let testRoot;
@@ -73,6 +74,10 @@ function teardownBrain() {
 
 // --- 테스트 ---
 
+it("전체 저장소 검증보다 긴 락 대기 시간을 사용한다", () => {
+  assert.equal(BWT_LOCK_TIMEOUT_MS, 5 * 60 * 1000);
+});
+
 describe("BWT Happy Path: create", () => {
   before(() => setupBrain());
   after(() => teardownBrain());
@@ -136,6 +141,120 @@ describe("BWT Happy Path: create", () => {
     // .bak 잔류 없음
     assert.equal(indexFiles.filter(f => f.endsWith(".bak")).length, 0);
   });
+
+  it("대문자 scopeId로 create해도 validate 가능한 recordId를 생성해야 한다", () => {
+    const engine = new BWTEngine(testRoot);
+    const intent = {
+      action: "create",
+      sourceRef: "10_projects/AIOS/notes.md",
+      content: "# AIOS 기록\n\n대문자 scopeId 회귀 테스트입니다.",
+      record: {
+        scopeType: "project",
+        scopeId: "AIOS",
+        type: "log",
+        title: "AIOS 기록",
+        summary: "대문자 scopeId recordId 정규화 테스트",
+        tags: ["domain/memory", "intent/retrieval"],
+        sourceType: "candidate"
+      }
+    };
+
+    const result = engine.execute(intent);
+
+    assert.equal(result.success, true);
+    assert.match(result.recordId, /^rec_proj_aios_\d{8}_0001$/);
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(r => r.recordId === result.recordId);
+    assert.equal(record.scopeId, "AIOS");
+    assert.equal(validate(testRoot).passed, true);
+  });
+});
+
+describe("BWT: K4 자동방지", () => {
+  before(() => setupBrain());
+  after(() => teardownBrain());
+
+  it("decision 타입이 candidate sourceType으로 들어오면 user_confirmed로 강제한다", () => {
+    const engine = new BWTEngine(testRoot);
+
+    const result = engine.execute({
+      action: "create",
+      sourceRef: "30_topics/k4/decision.md",
+      content: "K4 자동방지 테스트",
+      record: {
+        scopeType: "topic",
+        scopeId: "k4",
+        type: "decision",
+        title: "K4 결정",
+        summary: "candidate decision 자동 보정",
+        tags: ["domain/memory"],
+        sourceType: "candidate"
+      }
+    });
+
+    assert.equal(result.success, true);
+    assert.ok(result.report.warnings.some(w => w.includes("[K4-AUTO]")));
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(r => r.recordId === result.recordId);
+    assert.equal(record.sourceType, "user_confirmed");
+
+    const validation = validate(testRoot);
+    assert.equal(validation.warnings.some(w => w.includes("[K4 오염]")), false);
+  });
+
+  it("note 타입의 candidate sourceType은 변경하지 않는다", () => {
+    const engine = new BWTEngine(testRoot);
+
+    const result = engine.execute({
+      action: "create",
+      sourceRef: "30_topics/k4/note.md",
+      content: "note는 K4 보정 대상이 아니다",
+      record: {
+        scopeType: "topic",
+        scopeId: "k4",
+        type: "note",
+        title: "K4 노트",
+        summary: "note candidate 유지",
+        tags: ["domain/memory"],
+        sourceType: "candidate"
+      }
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.report.warnings.some(w => w.includes("[K4-AUTO]")), false);
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(r => r.recordId === result.recordId);
+    assert.equal(record.sourceType, "candidate");
+  });
+
+  it("decision 타입의 user_confirmed sourceType은 그대로 유지한다", () => {
+    const engine = new BWTEngine(testRoot);
+
+    const result = engine.execute({
+      action: "create",
+      sourceRef: "30_topics/k4/confirmed-decision.md",
+      content: "이미 확인된 decision은 그대로 둔다",
+      record: {
+        scopeType: "topic",
+        scopeId: "k4",
+        type: "decision",
+        title: "확정 결정",
+        summary: "user_confirmed 유지",
+        tags: ["domain/memory"],
+        sourceType: "user_confirmed"
+      }
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.report.warnings.some(w => w.includes("[K4-AUTO]")), false);
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(r => r.recordId === result.recordId);
+    assert.equal(record.sourceType, "user_confirmed");
+  });
 });
 
 describe("BWT: update", () => {
@@ -185,6 +304,77 @@ describe("BWT: update", () => {
     const doc = fs.readFileSync(path.join(testRoot, "30_topics", "upd", "notes.md"), "utf-8");
     assert.equal(doc, "수정된 내용");
   });
+
+  it("content를 빈 문자열로 update해도 문서와 contentHash가 갱신되어야 한다", () => {
+    const engine = new BWTEngine(testRoot);
+    const createResult = engine.execute({
+      action: "create",
+      sourceRef: "30_topics/upd/empty.md",
+      content: "기존 내용",
+      record: {
+        scopeType: "topic",
+        scopeId: "upd",
+        type: "note",
+        title: "빈 내용 업데이트",
+        summary: "빈 문자열 contentHash 테스트",
+        tags: ["domain/memory"],
+        sourceType: "candidate"
+      }
+    });
+    assert.equal(createResult.success, true);
+
+    const updateResult = new BWTEngine(testRoot).execute({
+      action: "update",
+      recordId: createResult.recordId,
+      sourceRef: "30_topics/upd/empty.md",
+      content: ""
+    });
+    assert.equal(updateResult.success, true);
+
+    const docPath = path.join(testRoot, "30_topics", "upd", "empty.md");
+    assert.equal(fs.readFileSync(docPath, "utf-8"), "");
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(r => r.recordId === createResult.recordId);
+    assert.equal(record.contentHash, calculateHashFromString(""));
+  });
+  it("sourceRef를 생략한 update도 기존 Raw 문서와 manifest를 함께 갱신해야 한다", () => {
+    const createResult = new BWTEngine(testRoot).execute({
+      action: "create",
+      sourceRef: "30_topics/upd/inherit-source-ref.md",
+      content: "업데이트 전",
+      record: {
+        scopeType: "topic",
+        scopeId: "upd",
+        type: "note",
+        title: "sourceRef 상속",
+        summary: "업데이트 전",
+        tags: ["domain/memory"],
+        sourceType: "candidate"
+      }
+    });
+    assert.equal(createResult.success, true);
+
+    const updateResult = new BWTEngine(testRoot).execute({
+      action: "update",
+      recordId: createResult.recordId,
+      content: "업데이트 후",
+      record: { summary: "sourceRef 자동 상속" }
+    });
+    assert.equal(updateResult.success, true);
+
+    const docPath = path.join(testRoot, "30_topics", "upd", "inherit-source-ref.md");
+    assert.equal(fs.readFileSync(docPath, "utf8"), "업데이트 후");
+
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const record = records.find(item => item.recordId === createResult.recordId);
+    assert.equal(record.sourceRef, "30_topics/upd/inherit-source-ref.md");
+    assert.equal(record.contentHash, calculateHashFromString("업데이트 후"));
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(testRoot, "90_index", "manifest.json"), "utf8"));
+    const entry = manifest.files.find(item => item.path === record.sourceRef);
+    assert.equal(entry.hash, record.contentHash);
+  });
 });
 
 describe("BWT: deprecate", () => {
@@ -223,6 +413,18 @@ describe("BWT: deprecate", () => {
     assert.equal(records[0].status, "deprecated");
     assert.equal(records[0].replacedBy, "obsolete");
     assert.equal(records[0].deprecationReason, "테스트 목적");
+  });
+
+  it("deprecate는 기존 sourceRef를 상속해 증분 검증한다", () => {
+    const records = readJsonl(path.join(testRoot, "90_index", "records.jsonl"));
+    const parsed = new BWTEngine(testRoot)._parseIntent({
+      action: "deprecate",
+      recordId: records[0].recordId,
+      replacedBy: "obsolete",
+      deprecationReason: "증분 검증 테스트"
+    });
+
+    assert.equal(parsed.sourceRef, "30_topics/dep/notes.md");
   });
 });
 
@@ -315,8 +517,8 @@ describe("BWT: 잔류 .tmp 감지", () => {
   before(() => setupBrain());
   after(() => teardownBrain());
 
-  it("인덱스에 .tmp 파일이 있으면 BWT를 거부해야 한다", () => {
-    // .tmp 파일 수동 생성
+  it("인덱스에 잔류 .tmp 파일이 있으면 자동 정리 후 BWT가 성공해야 한다", () => {
+    // 이전 BWT 비정상 종료를 시뮬레이션: .tmp 파일 수동 생성
     fs.writeFileSync(
       path.join(testRoot, "90_index", "records.jsonl.tmp"),
       "잔류 데이터",
@@ -339,12 +541,13 @@ describe("BWT: 잔류 .tmp 감지", () => {
       }
     });
 
-    assert.equal(result.success, false);
-    assert.equal(result.report.step, 0);
-    assert.ok(result.report.message.includes("잔류 .tmp"));
-
-    // 정리
-    fs.unlinkSync(path.join(testRoot, "90_index", "records.jsonl.tmp"));
+    // 자동 정리 후 성공
+    assert.equal(result.success, true);
+    // 잔류 .tmp는 자동 삭제됨
+    assert.equal(
+      fs.existsSync(path.join(testRoot, "90_index", "records.jsonl.tmp")),
+      false
+    );
   });
 });
 
@@ -446,18 +649,12 @@ describe("BWT: _commit 부분 실패 시 복원", () => {
     });
     assert.equal(createResult.success, true);
 
-    // 원본 상태 스냅샷
-    const originalRecords = fs.readFileSync(
-      path.join(testRoot, "90_index", "records.jsonl"), "utf-8"
-    );
-
     // 새 엔진으로 두 번째 create 시도 — commit 단계에서 실패를 유도
     const engine2 = new BWTEngine(testRoot);
 
     // _commit을 가로채서 두 번째 rename에서 실패하도록 함
     const originalCommit = engine2._commit.bind(engine2);
     let renameCount = 0;
-    const originalRename = fs.renameSync;
     engine2._commit = function() {
       renameCount = 0;
       const _renameSync = fs.renameSync;
@@ -500,6 +697,132 @@ describe("BWT: _commit 부분 실패 시 복원", () => {
 
     // .bak 잔류 없음
     assert.equal(indexFiles.filter(f => f.endsWith(".bak")).length, 0);
+  });
+});
+
+describe("BWT: Windows rename 잠금 재시도", () => {
+  before(() => setupBrain());
+  after(() => teardownBrain());
+
+  it("일시적인 EPERM이 발생해도 동일 트랜잭션에서 파일 교체를 완료해야 한다", () => {
+    const engine = new BWTEngine(testRoot);
+    const originalRenameSync = fs.renameSync;
+    let injected = false;
+
+    fs.renameSync = function(sourcePath, destinationPath) {
+      if (!injected && destinationPath.endsWith("records_digest.txt")) {
+        injected = true;
+        const error = new Error("시뮬레이션: Windows 파일 잠금");
+        error.code = "EPERM";
+        throw error;
+      }
+      return originalRenameSync(sourcePath, destinationPath);
+    };
+
+    let result;
+    try {
+      result = engine.execute({
+        action: "create",
+        sourceRef: "30_topics/rename-retry/notes.md",
+        content: "Windows rename 재시도 테스트",
+        record: {
+          scopeType: "topic",
+          scopeId: "rename-retry",
+          type: "note",
+          title: "Windows rename 재시도",
+          summary: "일시적인 EPERM 복구",
+          tags: ["domain/memory"],
+          sourceType: "candidate"
+        }
+      });
+    } finally {
+      fs.renameSync = originalRenameSync;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(result.success, true);
+    assert.equal(validate(testRoot).passed, true);
+
+    const indexFiles = fs.readdirSync(path.join(testRoot, "90_index"));
+    assert.equal(indexFiles.filter(file => file.endsWith(".tmp")).length, 0);
+    assert.equal(indexFiles.filter(file => file.endsWith(".bak")).length, 0);
+  });
+});
+
+describe("BWT: rollback 백업 복원 재시도", () => {
+  before(() => setupBrain());
+  after(() => teardownBrain());
+
+  it("commit 실패 뒤 백업 copy가 일시 EPERM이어도 정본 파일을 복원해야 한다", () => {
+    const initialEngine = new BWTEngine(testRoot);
+    const initialResult = initialEngine.execute({
+      action: "create",
+      sourceRef: "30_topics/rollback-base/notes.md",
+      content: "rollback 기준 레코드",
+      record: {
+        scopeType: "topic",
+        scopeId: "rollback-base",
+        type: "note",
+        title: "rollback 기준",
+        summary: "복원 기준",
+        tags: ["domain/memory"],
+        sourceType: "candidate"
+      }
+    });
+    assert.equal(initialResult.success, true);
+
+    const engine = new BWTEngine(testRoot);
+    const originalRenameSync = fs.renameSync;
+    const originalCopyFileSync = fs.copyFileSync;
+    let renameCount = 0;
+    let commitFailed = false;
+    let rollbackCopyInjected = false;
+
+    fs.renameSync = function(sourcePath, destinationPath) {
+      renameCount++;
+      if (renameCount === 2) {
+        commitFailed = true;
+        throw new Error("시뮬레이션: commit 중단");
+      }
+      return originalRenameSync(sourcePath, destinationPath);
+    };
+    fs.copyFileSync = function(sourcePath, destinationPath) {
+      if (commitFailed && !rollbackCopyInjected && sourcePath.endsWith(".bak")) {
+        rollbackCopyInjected = true;
+        const error = new Error("시뮬레이션: rollback copy 잠금");
+        error.code = "EPERM";
+        throw error;
+      }
+      return originalCopyFileSync(sourcePath, destinationPath);
+    };
+
+    let result;
+    try {
+      result = engine.execute({
+        action: "create",
+        sourceRef: "30_topics/rollback-fail/notes.md",
+        content: "실패할 레코드",
+        record: {
+          scopeType: "topic",
+          scopeId: "rollback-fail",
+          type: "note",
+          title: "실패 레코드",
+          summary: "rollback 대상",
+          tags: ["domain/memory"],
+          sourceType: "candidate"
+        }
+      });
+    } finally {
+      fs.renameSync = originalRenameSync;
+      fs.copyFileSync = originalCopyFileSync;
+    }
+
+    assert.equal(result.success, false);
+    assert.equal(rollbackCopyInjected, true);
+    assert.equal(readJsonl(path.join(testRoot, "90_index", "records.jsonl")).length, 1);
+    assert.equal(validate(testRoot).passed, true);
+    const indexFiles = fs.readdirSync(path.join(testRoot, "90_index"));
+    assert.equal(indexFiles.filter(file => file.endsWith(".tmp") || file.endsWith(".bak")).length, 0);
   });
 });
 

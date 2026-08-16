@@ -1,5 +1,8 @@
 import { Bot, InlineKeyboard } from "grammy";
 import crypto from "node:crypto";
+import path from "node:path";
+import { SessionManager } from "./session.js";
+import type { Config } from "./config.js";
 
 interface PendingApproval {
   resolve: (approved: boolean) => void;
@@ -16,17 +19,26 @@ export class ApprovalService {
   private bot: Bot;
   private ownerUserIds: number[];
   private pending: Map<string, PendingApproval> = new Map();
+  private sessionManager: SessionManager;
   /** 승인 결과를 SDK에 주입할 콜백 (bot.ts에서 설정) */
   onApprovalResult?: (chatId: number, toolName: string, approved: boolean, userId?: number) => void;
+  /** 주간 분석 등 커스텀 콜백 처리를 위한 agent/chatId 참조 */
+  private customCallbackHandler?: (chatId: number, data: string, userId: number) => Promise<void>;
 
-  constructor(bot: Bot, ownerUserIds: number[] = []) {
+  constructor(bot: Bot, ownerUserIds: number[] = [], sessionDir: string = "") {
     this.bot = bot;
     this.ownerUserIds = ownerUserIds;
+    this.sessionManager = new SessionManager(sessionDir);
   }
 
   /** bot.ts에서 auth 미들웨어 뒤에 호출해야 함 */
   registerHandlers(): void {
     this.setupHandlers();
+  }
+
+  /** 커스텀 콜백 핸들러 등록 (주간 분석 등) */
+  setCustomCallbackHandler(handler: (chatId: number, data: string, userId: number) => Promise<void>): void {
+    this.customCallbackHandler = handler;
   }
 
   /** 텔레그램에 승인 요청을 보내고, 버튼 클릭까지 대기 */
@@ -87,7 +99,14 @@ export class ApprovalService {
           requestId = data.slice("reject_".length);
           approved = false;
         } else {
-          return; // 관련 없는 콜백
+          // 승인/거절이 아닌 콜백 → 커스텀 핸들러로 위임 (주간 분석 등)
+          if (this.customCallbackHandler) {
+            const chatId = ctx.chat?.id ?? ctx.callbackQuery.from.id;
+            const userId = ctx.from?.id ?? 0;
+            await ctx.answerCallbackQuery("처리 중...").catch(() => {});
+            await this.customCallbackHandler(chatId, data, userId);
+          }
+          return;
         }
 
         const entry = this.pending.get(requestId);
@@ -105,6 +124,13 @@ export class ApprovalService {
 
         clearTimeout(entry.timer);
         this.pending.delete(requestId);
+
+        // 버튼 클릭 시점으로 세션 lastMessageAt 갱신 (이사님이 폰 보고 있다는 신호)
+        try {
+          const session = this.sessionManager.getOrCreate(entry.chatId);
+          session.lastMessageAt = new Date().toISOString();
+          this.sessionManager.save(session);
+        } catch { /* 세션 갱신 실패는 무시 */ }
 
         // Promise를 먼저 resolve → SDK가 즉시 진행 가능
         // 텔레그램 UI 업데이트는 부가 작업 (실패해도 무관)
@@ -162,6 +188,34 @@ export class ApprovalService {
         return `⚠️ <b>${escapeHtml(toolName)}</b> 도구 사용 요청`;
     }
   }
+}
+
+// 파일/디렉토리 삭제 명령만 수동 승인 — 나머지는 자동
+const DELETE_PATTERNS = [
+  /\brm\s/,          // rm <파일> (Unix)
+  /\brmdir\b/,       // rmdir (Windows/Unix)
+  /\bdel\s/,         // del <파일> (Windows cmd)
+  /\bRemove-Item\b/, // Remove-Item (PowerShell)
+  /\brd\s/,          // rd /s (Windows rmdir 단축)
+  /\bunlink\b/,      // node fs.unlink 계열 bash 실행 방지
+];
+
+export function shouldAutoApprove(
+  toolName: string,
+  input: Record<string, unknown>,
+  _config: Pick<Config, "autoApprovePaths" | "autoApproveBashPatterns">,
+): boolean {
+  // 파일 읽기/쓰기는 항상 자동 승인
+  if (toolName === "Edit" || toolName === "Write") return true;
+
+  if (toolName === "Bash") {
+    const command = String(input.command || "");
+    // 파일 삭제 명령만 수동 승인
+    if (DELETE_PATTERNS.some((p) => p.test(command))) return false;
+    return true;
+  }
+
+  return false;
 }
 
 function escapeHtml(text: string): string {

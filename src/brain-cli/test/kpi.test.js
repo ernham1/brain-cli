@@ -11,7 +11,8 @@ const {
   calculateK3,
   calculateK4,
   formatKPIMarkdown,
-  appendKPILog
+  appendKPILog,
+  logK4Event
 } = require("../src/kpi");
 
 let testRoot;
@@ -143,5 +144,42 @@ describe("appendKPILog", () => {
     };
     const logFile = appendKPILog(testRoot, "user", "test", kpis);
     assert.ok(fs.existsSync(logFile));
+  });
+});
+
+describe("logK4Event", () => {
+  it("k4_events.jsonl에 이벤트를 append해야 한다", () => {
+    const events = [
+      { recordId: "rec_proj_test_20260304_0001", type: "rule", sourceType: "candidate" }
+    ];
+    const count = logK4Event(testRoot, events);
+    assert.equal(count, 1);
+
+    const logPath = path.join(testRoot, "90_index", "k4_events.jsonl");
+    assert.ok(fs.existsSync(logPath));
+    const line = JSON.parse(fs.readFileSync(logPath, "utf-8").trim().split("\n")[0]);
+    assert.equal(line.recordId, "rec_proj_test_20260304_0001");
+    assert.equal(line.type, "rule");
+    assert.ok(line.timestamp);
+  });
+
+  it("빈 배열이면 0을 반환하고 파일을 건드리지 않아야 한다", () => {
+    const count = logK4Event(testRoot, []);
+    assert.equal(count, 0);
+  });
+
+  it("여러 이벤트를 한 번에 기록할 수 있어야 한다", () => {
+    const before = fs.existsSync(path.join(testRoot, "90_index", "k4_events.jsonl"))
+      ? fs.readFileSync(path.join(testRoot, "90_index", "k4_events.jsonl"), "utf-8").trim().split("\n").length
+      : 0;
+    const events = [
+      { recordId: "rec_a", type: "decision", sourceType: "inference" },
+      { recordId: "rec_b", type: "rule", sourceType: "candidate" }
+    ];
+    const count = logK4Event(testRoot, events);
+    assert.equal(count, 2);
+
+    const after = fs.readFileSync(path.join(testRoot, "90_index", "k4_events.jsonl"), "utf-8").trim().split("\n").length;
+    assert.equal(after - before, 2);
   });
 });

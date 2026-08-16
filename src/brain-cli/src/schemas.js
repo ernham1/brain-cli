@@ -7,8 +7,12 @@ const RECORD_FIELDS = [
   "replacedBy", "deprecationReason", "updatedAt", "contentHash"
 ];
 
+// v3.1 선택 필드: 기존 레코드에는 없어도 된다.
+const OPTIONAL_RECORD_FIELDS = ["originalChunk"];
+const ORIGINAL_CHUNK_MAX_LENGTH = 2000;
+
 const SCOPE_TYPES = ["project", "agent", "user", "topic"];
-const RECORD_TYPES = ["rule", "decision", "profile", "log", "ref", "note", "candidate", "reminder", "project_state", "meta_strategy"];
+const RECORD_TYPES = ["rule", "decision", "profile", "log", "ref", "note", "candidate", "reminder", "project_state", "meta_strategy", "wiki"];
 const SOURCE_TYPES = ["user_confirmed", "candidate", "chat_log", "external_doc", "inference"];
 const STATUS_VALUES = ["active", "deprecated", "archived"];
 
@@ -79,6 +83,9 @@ function validateRecord(record) {
     errors.push(`contentHash 형식 오류: sha256: 접두사 필요`);
   }
 
+  const originalChunkErrors = validateOriginalChunk(record.originalChunk, "record.originalChunk", { optional: true });
+  errors.push(...originalChunkErrors);
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -120,6 +127,17 @@ function validateIntent(intent) {
       break;
   }
 
+  if ((intent.action === "create" || intent.action === "update") && intent.record !== undefined) {
+    errors.push(...validateIntentRecord(intent.record));
+  }
+
+  if ((intent.action === "create" || intent.action === "update") && intent.sourceRef) {
+    const sourceRefErrors = validateSourceRef(intent.sourceRef);
+    errors.push(...sourceRefErrors);
+  }
+
+  errors.push(...validateOriginalChunk(intent.originalChunk, "originalChunk", { optional: true }));
+
   // links 검증 (optional, create/update 시)
   if (intent.links !== undefined && (intent.action === "create" || intent.action === "update")) {
     if (!Array.isArray(intent.links)) {
@@ -139,8 +157,63 @@ function validateIntent(intent) {
   return { valid: errors.length === 0, errors };
 }
 
+function validateIntentRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return ["record는 객체여야 합니다"];
+  }
+
+  const errors = [];
+  if (Object.prototype.hasOwnProperty.call(record, "scopeType") && !SCOPE_TYPES.includes(record.scopeType)) {
+    errors.push(`record.scopeType 값 오류: ${record.scopeType} (allowed: ${SCOPE_TYPES.join(", ")})`);
+  }
+  if (Object.prototype.hasOwnProperty.call(record, "type") && !RECORD_TYPES.includes(record.type)) {
+    errors.push(`record.type 값 오류: ${record.type} (allowed: ${RECORD_TYPES.join(", ")})`);
+  }
+  if (Object.prototype.hasOwnProperty.call(record, "sourceType") && !SOURCE_TYPES.includes(record.sourceType)) {
+    errors.push(`record.sourceType 값 오류: ${record.sourceType} (allowed: ${SOURCE_TYPES.join(", ")})`);
+  }
+  if (Object.prototype.hasOwnProperty.call(record, "status") && !STATUS_VALUES.includes(record.status)) {
+    errors.push(`record.status 값 오류: ${record.status} (allowed: ${STATUS_VALUES.join(", ")})`);
+  }
+  if (Object.prototype.hasOwnProperty.call(record, "tags") && !Array.isArray(record.tags)) {
+    errors.push("record.tags는 배열이어야 합니다");
+  }
+  errors.push(...validateOriginalChunk(record.originalChunk, "record.originalChunk", { optional: true }));
+  return errors;
+}
+
+function validateOriginalChunk(value, fieldName = "originalChunk", _options = {}) {
+  const errors = [];
+  if (value === undefined) return errors;
+  if (value === null) return errors;
+  if (typeof value !== "string") {
+    errors.push(`${fieldName}는 문자열 또는 null이어야 합니다`);
+    return errors;
+  }
+
+  return errors;
+}
+
+function validateSourceRef(sourceRef) {
+  const errors = [];
+  if (typeof sourceRef !== "string") {
+    return ["sourceRef는 문자열이어야 합니다"];
+  }
+
+  const normalized = sourceRef.replace(/\\/g, "/");
+  if (/^[a-zA-Z]:\//.test(normalized) || normalized.startsWith("/") || normalized.includes(":")) {
+    errors.push(`sourceRef는 Brain 내부 상대경로여야 합니다: ${sourceRef}`);
+  }
+  if (normalized.split("/").some(part => part === ".." || part === "")) {
+    errors.push(`sourceRef에 빈 경로 또는 상위경로(..)를 사용할 수 없습니다: ${sourceRef}`);
+  }
+  return errors;
+}
+
 module.exports = {
   RECORD_FIELDS,
+  OPTIONAL_RECORD_FIELDS,
+  ORIGINAL_CHUNK_MAX_LENGTH,
   SCOPE_TYPES,
   RECORD_TYPES,
   SOURCE_TYPES,
@@ -149,5 +222,8 @@ module.exports = {
   RECORD_ID_REGEX,
   INTENT_ACTIONS,
   validateRecord,
-  validateIntent
+  validateIntentRecord,
+  validateIntent,
+  validateOriginalChunk,
+  validateSourceRef
 };

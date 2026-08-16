@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { readJsonl, safeReadJson, calculateHash, generateDigestLine } = require("./utils");
-const { validateRecord, RECORD_ID_REGEX } = require("./schemas");
+const { validateRecord } = require("./schemas");
 
 /**
  * Brain 디렉토리의 정합성을 검증한다.
@@ -11,6 +11,7 @@ const { validateRecord, RECORD_ID_REGEX } = require("./schemas");
  * @param {Object} options
  * @param {boolean} options.tmpMode - .tmp 파일 대상 검증 여부
  * @param {boolean} options.full - 전체 검증 (B08에서 확장)
+ * @param {string|null} options.changedSourceRef - tmpMode에서 이번 트랜잭션 문서만 엄격 검증
  * @returns {{ passed: boolean, errors: string[], warnings: string[] }}
  */
 function validate(brainRoot, options = {}) {
@@ -44,8 +45,9 @@ function validate(brainRoot, options = {}) {
   }
 
   // 2. records.jsonl 스키마 검증
+  let records = [];
   try {
-    const records = readJsonl(recordsPath);
+    records = readJsonl(recordsPath);
     for (let i = 0; i < records.length; i++) {
       const result = validateRecord(records[i]);
       if (!result.valid) {
@@ -61,16 +63,37 @@ function validate(brainRoot, options = {}) {
     }
 
     // recordId 중복 검사
-    const ids = records.map(r => r.recordId);
-    const dupes = ids.filter((id, idx) => ids.indexOf(id) !== idx);
-    if (dupes.length > 0) {
-      errors.push(`recordId 중복: ${[...new Set(dupes)].join(", ")}`);
+    const seenIds = new Set();
+    const duplicateIds = new Set();
+    for (const record of records) {
+      if (seenIds.has(record.recordId)) duplicateIds.add(record.recordId);
+      else seenIds.add(record.recordId);
+    }
+    if (duplicateIds.size > 0) {
+      errors.push(`recordId 중복: ${[...duplicateIds].join(", ")}`);
+    }
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      if (!record.sourceRef || record.status !== "active") continue;
+      if (options.tmpMode && options.changedSourceRef && record.sourceRef !== options.changedSourceRef) continue;
+
+      const filePath = path.join(brainRoot, record.sourceRef);
+      const tmpFilePath = filePath + ".tmp";
+      const checkPath = options.tmpMode && fs.existsSync(tmpFilePath) ? tmpFilePath : filePath;
+      if (!fs.existsSync(checkPath)) {
+        warnings.push(`record sourceRef 파일 없음: ${record.recordId} -> ${record.sourceRef}`);
+      }
     }
 
   } catch (err) {
     if (fs.existsSync(recordsPath)) {
       errors.push(`records.jsonl 파싱 실패: ${err.message}`);
     }
+  }
+
+  if (!options.tmpMode) {
+    _validateStoreConsistency(brainRoot, indexDir, records, errors, warnings);
   }
 
   // 3. tags.json 검증
@@ -87,8 +110,13 @@ function validate(brainRoot, options = {}) {
   // 4. manifest 해시 검증 (파일-인덱스 정합성)
   const manifestPath = path.join(indexDir, options.tmpMode ? "manifest.json.tmp" : "manifest.json");
   const manifestResult = safeReadJson(manifestPath);
+  const { isManifestHashExcluded, readSourceContract } = require("./integrity-monitor");
+  const sourceContract = readSourceContract(brainRoot);
+  if (sourceContract.error) warnings.push(sourceContract.error);
   if (manifestResult.ok && manifestResult.data.files) {
     for (const entry of manifestResult.data.files) {
+      if (options.tmpMode && options.changedSourceRef && entry.path !== options.changedSourceRef) continue;
+      if (isManifestHashExcluded(sourceContract, entry.path)) continue;
       const filePath = path.join(brainRoot, entry.path);
       const tmpFilePath = filePath + ".tmp";
 
@@ -96,14 +124,21 @@ function validate(brainRoot, options = {}) {
       const checkPath = options.tmpMode && fs.existsSync(tmpFilePath) ? tmpFilePath : filePath;
 
       if (!fs.existsSync(checkPath)) {
-        errors.push(`manifest 참조 파일 없음: ${entry.path}`);
+        // 현재 트랜잭션이 이 파일을 쓰는 경우(.tmp 존재)만 error — 나머지는 기존 불일치이므로 warning
+        if (options.tmpMode && fs.existsSync(tmpFilePath)) {
+          errors.push(`manifest 참조 파일 없음: ${entry.path}`);
+        } else {
+          warnings.push(`manifest 참조 파일 없음 (수동 삭제?): ${entry.path}`);
+        }
         continue;
       }
       const actualHash = calculateHash(checkPath);
       if (actualHash !== entry.hash) {
-        if (options.tmpMode) {
+        if (options.tmpMode && fs.existsSync(tmpFilePath)) {
+          // 이번 트랜잭션이 변경한 파일(.tmp 존재)만 엄격 검증
           errors.push(`해시 불일치: ${entry.path} (expected: ${entry.hash}, actual: ${actualHash})`);
         } else {
+          // 트랜잭션 무관 파일 또는 non-tmpMode → warning
           warnings.push(`해시 불일치 (수동 변경?): ${entry.path}`);
         }
       }
@@ -129,8 +164,36 @@ function validate(brainRoot, options = {}) {
           }
         }
       }
-    } catch (err) {
+    } catch {
       // records 파싱 실패는 이미 위에서 보고됨
+    }
+  }
+
+  // 5-K4. 오염 감지 — lifecycle.detectContamination 위임
+  const k4Events = [];
+  if (!options.tmpMode) {
+    try {
+      const { detectContamination } = require("./lifecycle");
+      const contaminationResult = detectContamination(brainRoot);
+      for (const item of contaminationResult.contaminated) {
+        warnings.push(`[K4 오염] ${item.recordId} (type=${item.type}, sourceType=${item.sourceType}) — user_confirmed 없이 SSOT 승격`);
+        k4Events.push({ recordId: item.recordId, type: item.type, sourceType: item.sourceType });
+      }
+    } catch {
+      // lifecycle 모듈 실패는 무시
+    }
+  }
+
+  // 5.5. Cascade Deprecation — deprecated 레코드를 참조하는 active 레코드 탐지
+  if (!options.tmpMode) {
+    try {
+      const { detectDeprecatedReferences } = require("./lifecycle");
+      const depRefs = detectDeprecatedReferences(brainRoot);
+      for (const ref of depRefs) {
+        warnings.push(`[고아 참조] ${ref.message}`);
+      }
+    } catch {
+      // lifecycle 모듈 실패는 무시
     }
   }
 
@@ -141,14 +204,15 @@ function validate(brainRoot, options = {}) {
     if (residual.length > 0 && !options.tmpMode) {
       warnings.push(`잔류 파일 감지: ${residual.join(", ")} — 이전 BWT 미완료 가능성`);
     }
-  } catch (err) {
+  } catch {
     // indexDir 읽기 실패는 무시
   }
 
   return {
     passed: errors.length === 0,
     errors,
-    warnings
+    warnings,
+    k4Events
   };
 }
 
@@ -216,4 +280,98 @@ function generateDistributionReport(records) {
   return { byScopeType, byScopeId: sortedScopeId, staleRecords };
 }
 
-module.exports = { validate, rebuildDigest, generateDistributionReport };
+/**
+ * manifest.json의 해시 불일치 항목을 현재 파일 기준으로 수정한다.
+ * - 파일이 존재하면 현재 해시로 갱신
+ * - 파일이 없으면 manifest에서 해당 항목 제거
+ * @param {string} brainRoot
+ * @returns {{ fixed: string[], removed: string[] }}
+ */
+function reconcileManifest(brainRoot) {
+  const manifestPath = path.join(brainRoot, "90_index", "manifest.json");
+  const result = safeReadJson(manifestPath);
+  if (!result.ok || !Array.isArray(result.data.files)) {
+    throw new Error("manifest.json 읽기 실패");
+  }
+
+  const fixed = [];
+  const removed = [];
+  const data = result.data;
+
+  data.files = data.files.filter(entry => {
+    const filePath = path.join(brainRoot, entry.path);
+    if (!fs.existsSync(filePath)) {
+      removed.push(entry.path);
+      return false;
+    }
+    const actualHash = calculateHash(filePath);
+    if (actualHash !== entry.hash) {
+      entry.hash = actualHash;
+      fixed.push(entry.path);
+    }
+    return true;
+  });
+
+  const tmpPath = manifestPath + ".reconcile.tmp";
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmpPath, manifestPath);
+
+  return { fixed, removed };
+}
+
+function _parseDigestIds(digestPath) {
+  if (!fs.existsSync(digestPath)) return [];
+  return fs.readFileSync(digestPath, "utf-8")
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith("#"))
+    .map(line => line.split(" | "))
+    .filter(parts => parts.length >= 5)
+    .map(parts => parts[0].trim())
+    .filter(recordId => /^rec_[a-z0-9_-]+$/i.test(recordId))
+    .filter(Boolean);
+}
+
+function _sampleIds(ids) {
+  return ids.slice(0, 5).join(", ");
+}
+
+function _validateStoreConsistency(brainRoot, indexDir, records, errors, warnings) {
+  const jsonIds = new Set(records.map(record => record.recordId).filter(Boolean));
+  const digestIds = new Set(_parseDigestIds(path.join(indexDir, "records_digest.txt")));
+  const digestMissing = [...jsonIds].filter(id => !digestIds.has(id));
+  const digestExtra = [...digestIds].filter(id => !jsonIds.has(id));
+  if (digestMissing.length > 0) {
+    errors.push(`digest 누락: JSONL 레코드 ${digestMissing.length}건 없음 (${_sampleIds(digestMissing)})`);
+  }
+  if (digestExtra.length > 0) {
+    errors.push(`digest 초과: JSONL에 없는 레코드 ${digestExtra.length}건 (${_sampleIds(digestExtra)})`);
+  }
+
+  const dbPath = path.join(indexDir, "records.db");
+  if (!fs.existsSync(dbPath)) return;
+  let db;
+  try {
+    const Database = require("better-sqlite3");
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const rows = db.prepare("SELECT record_id, source_ref FROM records").all();
+    const dbIds = new Set(rows.map(row => row.record_id));
+    const rawBackedDbIds = rows
+      .filter(row => row.source_ref && fs.existsSync(path.join(brainRoot, row.source_ref)))
+      .map(row => row.record_id);
+    const dbMissingInJson = rawBackedDbIds.filter(id => !jsonIds.has(id));
+    const jsonMissingInDb = [...jsonIds].filter(id => !dbIds.has(id));
+    if (dbMissingInJson.length > 0) {
+      errors.push(`DB→JSONL 누락: Raw가 존재하는 레코드 ${dbMissingInJson.length}건 (${_sampleIds(dbMissingInJson)})`);
+    }
+    if (jsonMissingInDb.length > 0) {
+      errors.push(`JSONL→DB 누락: ${jsonMissingInDb.length}건 (${_sampleIds(jsonMissingInDb)})`);
+    }
+  } catch (error) {
+    warnings.push(`SQLite 교차 검증 실패: ${error.message}`);
+  } finally {
+    if (db) db.close();
+  }
+}
+
+module.exports = { validate, rebuildDigest, generateDistributionReport, reconcileManifest };

@@ -1,26 +1,44 @@
 {
-  "name": "clo-telegram",
+  "name": "@ernham/clo-telegram",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "클로 텔레그램 봇 — Brain 장기기억 연동 AI 비서",
+  "description": "Brain 장기기억 연동 AI 텔레그램 봇 — clo-telegram setup으로 간편 설치",
+  "bin": {
+    "clo-telegram": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "tools/",
+    "hook-templates/"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "start:gemini": "node --env-file=.env.gemini dist/index.js",
+    "start:gpt": "node --env-file=.env.gpt dist/index.js",
+    "setup": "tsx src/cli.ts setup"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.63",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.114",
     "@anthropic-ai/sdk": "^0.61.0",
     "@google/generative-ai": "^0.24.1",
     "@grammyjs/runner": "^2.0.3",
+    "@inquirer/prompts": "^7.10.1",
+    "cheerio": "^1.2.0",
     "dotenv": "^16.4.0",
     "grammy": "^1.35.0",
+    "mammoth": "^1.11.0",
     "openai": "^6.25.0",
-    "zod": "^3.24.0"
+    "pdf-parse": "^1.1.1",
+    "playwright-core": "^1.59.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "youtube-transcript": "^1.2.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.5",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

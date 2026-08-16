@@ -136,11 +136,32 @@ function appendKPILog(brainRoot, scopeType, scopeId, kpis) {
   return logFile;
 }
 
+/**
+ * K4 오염 이벤트를 90_index/k4_events.jsonl에 append
+ * BWT를 거치지 않고 직접 append — K4 로깅이 BWT를 트리거하면 무한루프 발생
+ * @param {string} brainRoot - Brain/ 절대 경로
+ * @param {Array<{recordId: string, type: string, sourceType: string}>} events
+ * @returns {number} 기록된 이벤트 수
+ */
+function logK4Event(brainRoot, events) {
+  if (!events || events.length === 0) return 0;
+
+  const logPath = path.join(brainRoot, "90_index", "k4_events.jsonl");
+  const timestamp = new Date().toISOString();
+  const lines = events.map(e =>
+    JSON.stringify({ timestamp, ...e })
+  );
+
+  fs.appendFileSync(logPath, lines.join("\n") + "\n", "utf-8");
+  return events.length;
+}
+
 module.exports = {
   calculateK1,
   calculateK2,
   calculateK3,
   calculateK4,
   formatKPIMarkdown,
-  appendKPILog
+  appendKPILog,
+  logK4Event
 };

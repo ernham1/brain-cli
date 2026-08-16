@@ -1,8 +1,8 @@
 # Engram
 
-**Your AI agent forgets everything every session. Brain fixes that.**
+**Your AI agent forgets everything every session. Engram fixes that.**
 
-Brain is a persistent long-term memory system for AI coding agents. It stores memories as local Markdown files with a transactional write engine — no API calls, no cloud dependency, no vendor lock-in.
+Engram is a persistent long-term memory system for AI coding agents. It stores memories as local Markdown files with a transactional write engine — no API calls, no cloud dependency, no vendor lock-in.
 
 ```bash
 npm install -g @ernham/brain-cli
@@ -10,14 +10,14 @@ brain-cli recall -b -g "what I was working on"
 # → instantly restores context from previous sessions
 ```
 
-## Why Brain?
+## Why Engram?
 
-| Problem | Brain's Solution |
+| Problem | Engram's Solution |
 |---------|-----------------|
 | AI loses all context when a session ends | Persistent memory that survives across sessions |
 | Same bugs get re-investigated | Past fixes are recalled automatically |
 | Decisions are forgotten and re-debated | Decision records with rationale are searchable |
-| Multi-agent setups can't share knowledge | Shared local memory — all agents read/write the same Brain |
+| Multi-agent setups can't share knowledge | Shared local memory — all agents read/write the same Engram |
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ brain-cli recall -b -g "what I was working on"
 npm install -g @ernham/brain-cli
 ```
 
-On install, Brain automatically:
+On install, Engram automatically:
 - Creates `~/Brain/` directory with index structure
 - Appends usage instructions to `~/.claude/CLAUDE.md`
 
@@ -58,6 +58,8 @@ brain-cli write '{
 }'
 ```
 
+When `--root` and `--brain` are omitted, `recall` and `write` use the local Brain Server (`BRAIN_SERVER_URL`, default `http://127.0.0.1:3849`). `write` falls back to direct file mode only when the connection is refused before submission. Timeouts and HTTP errors never trigger an automatic resubmission, because the original transaction may already have committed.
+
 ### 4. Search memories
 
 ```bash
@@ -79,7 +81,7 @@ That's it. Your agent now has persistent memory.
 | `recall -b -g "keyword"` | Boot + search in one shot (session start) |
 | `write '<Intent JSON>'` | Store memory via BWT transaction |
 | `search -g "keyword"` | Search memories by keyword, type, or tag |
-| `init` | Initialize Brain directory (idempotent) |
+| `init` | Initialize Engram directory (idempotent) |
 | `boot` | Run boot sequence (index load + integrity check) |
 | `validate` | Verify index integrity |
 | `validate --report` | Distribution report (scope counts, stale records) |
@@ -105,7 +107,7 @@ These commands let your agent learn from its own experience — tracking which t
 
 ## How It Works
 
-### Brain Directory
+### Engram Directory
 
 ```
 ~/Brain/
@@ -117,13 +119,17 @@ These commands let your agent learn from its own experience — tracking which t
   99_policy/      # Operation policies
 ```
 
-### BWT (Brain Write Transaction)
+### BWT (Engram Write Transaction)
 
 Every write goes through a 9-step transaction to prevent data corruption:
 
 1. Intent validation → 2. Backup (.bak) → 3. Directory creation → 4. Document write (.tmp) → 5. Index update (.tmp) → 6. Manifest update (.tmp) → 7. Digest update (.tmp) → 8. Integrity check → 9. Atomic rename
 
 If any step fails, all changes roll back automatically.
+
+### K4 Integrity Rule
+
+`decision` and `rule` records are SSOT-level memories. When a write intent sends either type with a non-`user_confirmed` `sourceType`, BWT automatically stores it as `user_confirmed` and emits a `[K4-AUTO]` warning. Other record types, such as `note`, keep the provided `sourceType`.
 
 ### Intent JSON Format
 

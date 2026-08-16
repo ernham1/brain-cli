@@ -10,7 +10,15 @@ export function isGroupChat(ctx: Context): boolean {
 export function createAuthMiddleware(config: Config) {
   return async (ctx: Context, next: NextFunction): Promise<void> => {
     const chatId = ctx.chat?.id;
-    if (!chatId) return;
+
+    // my_chat_member 업데이트는 chatId가 없을 수 있으므로 통과시킴
+    // (봇이 그룹에 추가/제거될 때 발생하는 이벤트)
+    if (!chatId) {
+      if (ctx.myChatMember) {
+        await next();
+      }
+      return;
+    }
 
     if (isGroupChat(ctx)) {
       // 그룹: 누구나 대화 가능 (멘션/reply 필터는 bot.ts에서 처리)

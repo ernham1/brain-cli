@@ -86,6 +86,49 @@ describe("validateIntent: links 필드", () => {
   });
 });
 
+describe("validateIntent: record enum 조기 검증", () => {
+  const baseIntent = {
+    action: "create",
+    sourceRef: "30_topics/test/note.md",
+    content: "# 테스트",
+    record: {
+      scopeType: "topic",
+      scopeId: "test",
+      type: "note",
+      title: "테스트",
+      sourceType: "candidate",
+      tags: ["domain/memory", "intent/retrieval"]
+    }
+  };
+
+  it("create의 잘못된 type을 인덱스 변경 전 거절한다", () => {
+    const result = validateIntent({
+      ...baseIntent,
+      record: { ...baseIntent.record, type: "verification" }
+    });
+
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some(error => error.includes("record.type 값 오류")));
+  });
+
+  it("update의 잘못된 enum과 tags를 조기 거절한다", () => {
+    const result = validateIntent({
+      action: "update",
+      recordId: "rec_topic_test_20260728_0001",
+      record: {
+        scopeType: "invalid_scope",
+        sourceType: "internal",
+        tags: "domain/memory"
+      }
+    });
+
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some(error => error.includes("record.scopeType 값 오류")));
+    assert.ok(result.errors.some(error => error.includes("record.sourceType 값 오류")));
+    assert.ok(result.errors.some(error => error.includes("record.tags는 배열")));
+  });
+});
+
 // --- BWT explicit links 통합 ---
 
 function setupBrain() {

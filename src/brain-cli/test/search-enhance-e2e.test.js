@@ -5,11 +5,12 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { performance } = require("node:perf_hooks");
 
 const { classify } = require("../src/classifier");
-const { search, createSessionContext } = require("../src/search");
-const { getSeedStrategies, SEED_STRATEGIES } = require("../src/meta-strategy");
-const { normalizeTokens, stemKorean, _resetSynonymCache } = require("../src/utils");
+const { search } = require("../src/search");
+const { getSeedStrategies } = require("../src/meta-strategy");
+const { normalizeTokens, _resetSynonymCache } = require("../src/utils");
 
 // === SB04: IntegrationRegression E2E 테스트 ===
 

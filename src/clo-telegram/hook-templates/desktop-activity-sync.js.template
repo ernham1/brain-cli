@@ -1,0 +1,105 @@
+#!/usr/bin/env node
+"use strict";
+
+// PostToolUse hook: VS Code Claude Code tool activity -> clo-telegram vscode-active.json
+// 외부 전송 없이 로컬 active session 상태만 갱신한다.
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+const BRIDGE_DIR = path.join("__INSTALL_DIR__", "data", "bridge");
+const ACTIVE_FILE = path.join(BRIDGE_DIR, "vscode-active.json");
+
+function normalizePath(value) {
+  return String(value || "").replace(/\\/g, "/");
+}
+
+function compact(value, max = 140) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function fileFromInput(toolInput) {
+  if (!toolInput || typeof toolInput !== "object") return "";
+  return normalizePath(toolInput.file_path || toolInput.filePath || toolInput.path || toolInput.notebook_path || "");
+}
+
+function summarizeTool(data) {
+  const toolName = data.tool_name || data.toolName || "tool";
+  const toolInput = data.tool_input || data.toolInput || {};
+  const description = toolInput.description || data.description || "";
+  if (toolName === "Bash") return `Bash: ${compact(description || toolInput.command || "명령 실행")}`;
+  const filePath = fileFromInput(toolInput);
+  if (filePath) return `${toolName}: ${filePath}`;
+  if (description) return `${toolName}: ${compact(description)}`;
+  return compact(toolName);
+}
+
+function readActive() {
+  try {
+    fs.mkdirSync(path.dirname(ACTIVE_FILE), { recursive: true });
+    if (!fs.existsSync(ACTIVE_FILE)) return { sessions: [], updatedAt: "" };
+    const active = JSON.parse(fs.readFileSync(ACTIVE_FILE, "utf-8"));
+    if (!Array.isArray(active.sessions)) active.sessions = [];
+    return active;
+  } catch {
+    return { sessions: [], updatedAt: "" };
+  }
+}
+
+function writeActive(active) {
+  const tmpFile = `${ACTIVE_FILE}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(active, null, 2), "utf-8");
+  fs.renameSync(tmpFile, ACTIVE_FILE);
+}
+
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    const data = JSON.parse(input || "{}");
+    const sessionId = data.session_id || data.sessionId || "";
+    const cwd = normalizePath(data.cwd || "");
+    if (!sessionId || !cwd) {
+      process.exit(0);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const active = readActive();
+    let session = active.sessions.find((item) => item.sessionId === sessionId)
+      || active.sessions.find((item) => normalizePath(item.cwd).toLowerCase() === cwd.toLowerCase());
+
+    if (!session) {
+      session = {
+        sessionId,
+        cwd,
+        projectName: path.basename(cwd) || "unknown",
+        startedAt: now,
+        watcherPid: undefined,
+        currentTask: null,
+        lastActivity: now,
+        recentFiles: [],
+        status: "working",
+      };
+      active.sessions.push(session);
+    }
+
+    const toolInput = data.tool_input || data.toolInput || {};
+    const touchedFile = fileFromInput(toolInput);
+    const recentFiles = Array.isArray(session.recentFiles) ? session.recentFiles : [];
+    if (touchedFile) {
+      const withoutDuplicate = recentFiles.filter((file) => normalizePath(file).toLowerCase() !== touchedFile.toLowerCase());
+      withoutDuplicate.push(touchedFile);
+      session.recentFiles = withoutDuplicate.slice(-12);
+    }
+
+    session.currentTask = summarizeTool(data);
+    session.lastActivity = now;
+    session.status = "working";
+    active.updatedAt = now;
+    writeActive(active);
+  } catch (error) {
+    process.stderr.write(`[DesktopActivitySync] 오류: ${error.message}\n`);
+  }
+  process.exit(0);
+});

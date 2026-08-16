@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - Unreleased
+
+### Changed
+- BWT now automatically promotes `decision` and `rule` records to `sourceType: "user_confirmed"` when a write intent provides a lower-trust source type, preventing new K4 contamination at write time.
+
 ## [1.3.0] - 2026-02-27
 
 ### Added

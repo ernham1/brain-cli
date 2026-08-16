@@ -1,0 +1,19 @@
+{
+  "id": "dj-20260816-1731-brr1",
+  "ts": "2026-08-16T17:31:40.749+09:00",
+  "session": "codex-desktop-brain-repository-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_START] #데이터복구 Brain 저장소 재해복구 루프를 시작한다. 익숙한 타입 근거는 과거 Raw 포렌식·RM 복구이며, 전제: dj-20260722-1416-sec5. C:/Projects/Brain과 D:/Projects/Brain 원본은 write/delete/reset 없이 불변 증거로 보존하고 H:/Brain-Recovery/20260816 격리 공간에서만 재구성한다.",
+  "options": [
+    "H: 별도 볼륨 격리 복구 후 검증·bundle 생성",
+    "현재 C:/D: 원본을 직접 수리",
+    "복구 중단"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

@@ -5,7 +5,6 @@ const path = require("path");
 const {
   calculateHash,
   calculateHashFromString,
-  generateRecordId,
   readJsonl,
   writeJsonl,
   safeReadJson,
@@ -13,10 +12,45 @@ const {
   isoNow,
   ensureDir
 } = require("./utils");
-const { validateIntent, validateRecord } = require("./schemas");
+const { validateIntent, ORIGINAL_CHUNK_MAX_LENGTH } = require("./schemas");
 const { validate } = require("./validate");
 const { autoLink, addLink } = require("./links");
 const { _loadDigest } = require("./search");
+
+const RETRYABLE_RENAME_ERRORS = new Set(["EPERM", "EACCES", "EBUSY"]);
+const BWT_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
+
+function renameWithRetry(sourcePath, destinationPath, maxAttempts = 6) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      fs.renameSync(sourcePath, destinationPath);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!RETRYABLE_RENAME_ERRORS.has(error.code) || attempt === maxAttempts) throw error;
+      const delayMs = 25 * (2 ** (attempt - 1));
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
+    }
+  }
+  throw lastError;
+}
+
+function copyFileWithRetry(sourcePath, destinationPath, maxAttempts = 6) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      fs.copyFileSync(sourcePath, destinationPath);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!RETRYABLE_RENAME_ERRORS.has(error.code) || attempt === maxAttempts) throw error;
+      const delayMs = 25 * (2 ** (attempt - 1));
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
+    }
+  }
+  throw lastError;
+}
 
 /**
  * BWT (Brain Write Transaction) Engine
@@ -41,6 +75,7 @@ class BWTEngine {
     this.indexDir = path.join(brainRoot, "90_index");
     this.bakFiles = [];
     this.tmpFiles = [];
+    this.transactionWarnings = [];
   }
 
   /**
@@ -49,8 +84,11 @@ class BWTEngine {
    * @returns {{ success: boolean, recordId?: string, report: Object }}
    */
   execute(intent) {
+    const { acquireLock } = require("./lock");
+    const lock = acquireLock(this.brainRoot, { staleMs: 30000, timeoutMs: BWT_LOCK_TIMEOUT_MS });
+    this.transactionWarnings = [];
     try {
-      // 동시성 방지: .tmp 잔류 파일 확인
+      // 동시성 방지: .tmp 잔류 파일 확인 (락 이후 이중 안전장치)
       this._checkResidualTmp();
 
       // Step 1: Intent 파싱 및 검증
@@ -64,6 +102,7 @@ class BWTEngine {
 
       // Step 4: 문서를 .tmp로 저장
       this._writeDocumentTmp(parsed);
+      this._assertSourceRefDocumentAvailable(parsed);
 
       // Step 5: contentHash + records.jsonl.tmp
       this._updateRecordsTmp(parsed);
@@ -75,7 +114,10 @@ class BWTEngine {
       this._updateDigestTmp(parsed);
 
       // Step 8: validate
-      const validation = validate(this.brainRoot, { tmpMode: true });
+      const validation = validate(this.brainRoot, {
+        tmpMode: true,
+        changedSourceRef: parsed.sourceRef || null
+      });
       if (!validation.passed) {
         this._rollback();
         return {
@@ -84,13 +126,13 @@ class BWTEngine {
             step: 8,
             message: "validate 실패",
             errors: validation.errors,
-            warnings: validation.warnings
+            warnings: [...this.transactionWarnings, ...validation.warnings]
           }
         };
       }
 
       // Step 9: atomic rename
-      this._commit();
+      this._commit(parsed);
 
       // Step 9.5: 링크 생성 (create 시, best-effort)
       let autoLinked = 0;
@@ -156,7 +198,7 @@ class BWTEngine {
         report: {
           action: parsed.action,
           recordId: parsed.recordId,
-          warnings: validation.warnings,
+          warnings: [...this.transactionWarnings, ...validation.warnings],
           explicitLinked,
           autoLinked
         }
@@ -172,15 +214,50 @@ class BWTEngine {
           errors: [error.message]
         }
       };
+    } finally {
+      lock.release();
     }
   }
 
-  // --- Step 0: 잔류 .tmp 확인 ---
+  // --- Step 0: 잔류 .tmp 확인 + 자동 정리 ---
   _checkResidualTmp() {
+    const cleaned = [];
+    const failed = [];
+
+    // 1. 인덱스 dir .tmp 정리
     const indexFiles = fs.readdirSync(this.indexDir);
-    const tmpFiles = indexFiles.filter(f => f.endsWith(".tmp"));
-    if (tmpFiles.length > 0) {
-      const err = new Error(`잔류 .tmp 파일 감지: ${tmpFiles.join(", ")} — 이전 BWT가 미완료 상태입니다. 정리 후 재시도하세요.`);
+    for (const f of indexFiles.filter(f => f.endsWith(".tmp"))) {
+      try {
+        fs.unlinkSync(path.join(this.indexDir, f));
+        cleaned.push(f);
+      } catch {
+        failed.push(f);
+      }
+    }
+
+    // 2. 문서 .tmp 정리 — manifest에 등록된 파일의 잔류 .tmp 확인
+    // 부분 commit 실패 시 문서 .tmp가 인덱스 dir 밖에 남아 이후 모든 BWT를 차단하는 버그 방지
+    try {
+      const manifest = safeReadJson(path.join(this.indexDir, "manifest.json"));
+      if (manifest.ok && Array.isArray(manifest.data.files)) {
+        for (const entry of manifest.data.files) {
+          const tmpPath = path.join(this.brainRoot, entry.path) + ".tmp";
+          if (fs.existsSync(tmpPath)) {
+            try {
+              fs.unlinkSync(tmpPath);
+              cleaned.push(entry.path + ".tmp");
+            } catch {
+              failed.push(entry.path + ".tmp");
+            }
+          }
+        }
+      }
+    } catch { /* manifest 읽기 실패는 무시 */ }
+
+    if (cleaned.length === 0 && failed.length === 0) return;
+
+    if (failed.length > 0) {
+      const err = new Error(`잔류 .tmp 정리 실패: ${failed.join(", ")} — 수동 삭제 후 재시도하세요.`);
       err.step = 0;
       throw err;
     }
@@ -196,18 +273,83 @@ class BWTEngine {
     }
 
     const parsed = { ...intent };
+    if (Object.prototype.hasOwnProperty.call(intent, "originalChunk")) {
+      parsed.originalChunk = this._normalizeOriginalChunk(intent.originalChunk);
+    }
+    if (intent.record) {
+      parsed.record = { ...intent.record };
+      this._forceConfirmedSourceType(parsed.record);
+    }
+
+    if (["update", "deprecate"].includes(intent.action)) {
+      this._inheritExistingSourceRef(parsed);
+    }
 
     if (intent.action === "create") {
-      // recordId 생성
-      const existingRecords = readJsonl(path.join(this.indexDir, "records.jsonl"));
-      parsed.recordId = generateRecordId(
+      parsed.recordId = this._allocateCreateRecordId(
         intent.record.scopeType,
-        intent.record.scopeId,
-        existingRecords
+        intent.record.scopeId
       );
     }
 
     return parsed;
+  }
+
+  _inheritExistingSourceRef(parsed) {
+    const records = readJsonl(path.join(this.indexDir, "records.jsonl"));
+    const existing = records.find(record => record.recordId === parsed.recordId);
+    if (!existing) return;
+
+    const isUpdate = parsed.action === "update";
+    const requestedRef = parsed.sourceRef || (parsed.record && parsed.record.sourceRef);
+    if (isUpdate && requestedRef && existing.sourceRef && requestedRef !== existing.sourceRef) {
+      const error = new Error(
+        "update sourceRef 변경 금지: " + existing.sourceRef + " -> " + requestedRef
+      );
+      error.step = 1;
+      throw error;
+    }
+
+    parsed.sourceRef = existing.sourceRef || requestedRef || "";
+    if (isUpdate && parsed.record && Object.prototype.hasOwnProperty.call(parsed.record, "sourceRef")) {
+      delete parsed.record.sourceRef;
+    }
+    if (isUpdate && parsed.content !== undefined && !parsed.sourceRef) {
+      const error = new Error("update content 저장 대상 sourceRef가 없습니다.");
+      error.step = 1;
+      throw error;
+    }
+  }
+  _allocateCreateRecordId(scopeType, scopeId) {
+    const { getWriteDb, getNextRecordId, recordExists } = require("./db");
+    const db = getWriteDb(this.brainRoot);
+    try {
+      const recordId = getNextRecordId(db, scopeType, scopeId);
+      if (recordExists(db, recordId)) {
+        const error = new Error(`recordId 충돌: ${recordId} — 기존 레코드를 덮어쓰지 않습니다.`);
+        error.step = 1;
+        throw error;
+      }
+      return recordId;
+    } finally {
+      db.close();
+    }
+  }
+
+  _normalizeOriginalChunk(value) {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return String(value).slice(0, ORIGINAL_CHUNK_MAX_LENGTH);
+  }
+
+  _forceConfirmedSourceType(record) {
+    if (!record || (record.type !== "decision" && record.type !== "rule")) return;
+    if (record.sourceType === "user_confirmed") return;
+
+    const warning = `[K4-AUTO] type=${record.type} 이므로 sourceType을 user_confirmed로 강제`;
+    record.sourceType = "user_confirmed";
+    this.transactionWarnings.push(warning);
+    console.warn(warning);
   }
 
   // --- Step 2: .bak 백업 ---
@@ -230,7 +372,7 @@ class BWTEngine {
 
   // --- Step 3: 폴더 생성 ---
   _ensureFolders(parsed) {
-    if (parsed.action === "create" && parsed.sourceRef) {
+    if ((parsed.action === "create" || parsed.action === "update") && parsed.sourceRef) {
       const docDir = path.dirname(path.join(this.brainRoot, parsed.sourceRef));
       ensureDir(docDir);
     }
@@ -254,6 +396,17 @@ class BWTEngine {
     }
   }
 
+  _assertSourceRefDocumentAvailable(parsed) {
+    if (parsed.action !== "create" || !parsed.sourceRef) return;
+
+    const docTmpPath = path.join(this.brainRoot, parsed.sourceRef) + ".tmp";
+    if (fs.existsSync(docTmpPath)) return;
+
+    const error = new Error(`sourceRef 문서 생성 실패: ${parsed.sourceRef} — content 없이 레코드만 저장할 수 없습니다.`);
+    error.step = 4;
+    throw error;
+  }
+
   // --- Step 5: records.jsonl.tmp 갱신 ---
   _updateRecordsTmp(parsed) {
     const recordsPath = path.join(this.indexDir, "records.jsonl");
@@ -270,6 +423,7 @@ class BWTEngine {
           ? calculateHashFromString(parsed.content)
           : (docPath && fs.existsSync(docPath + ".tmp") ? calculateHash(docPath + ".tmp") : "sha256:empty");
 
+        const originalChunk = this._normalizeOriginalChunk(parsed.originalChunk);
         const newRecord = {
           recordId: parsed.recordId,
           scopeType: parsed.record.scopeType,
@@ -286,7 +440,15 @@ class BWTEngine {
           updatedAt: now,
           contentHash: contentHash
         };
+        if (originalChunk !== undefined) {
+          newRecord.originalChunk = originalChunk;
+        }
 
+        if (records.some(record => record.recordId === parsed.recordId)) {
+          const error = new Error(`recordId 충돌: ${parsed.recordId} — records.jsonl에도 추가하지 않습니다.`);
+          error.step = 5;
+          throw error;
+        }
         records.push(newRecord);
         break;
       }
@@ -304,8 +466,11 @@ class BWTEngine {
             records[idx][key] = value;
           }
         }
-        if (parsed.content) {
+        if (parsed.content !== undefined) {
           records[idx].contentHash = calculateHashFromString(parsed.content);
+        }
+        if (Object.prototype.hasOwnProperty.call(parsed, "originalChunk")) {
+          records[idx].originalChunk = this._normalizeOriginalChunk(parsed.originalChunk);
         }
         records[idx].updatedAt = now;
         break;
@@ -359,13 +524,22 @@ class BWTEngine {
       // 카테고리 결정
       const category = this._categorize(parsed.sourceRef);
 
-      data.files.push({
-        path: parsed.sourceRef,
-        hash: hash,
-        size: size,
-        updatedAt: now,
-        category: category
-      });
+      // 동일 path가 이미 있으면 덮어쓰기 (중복 방지)
+      const existing = data.files.find(f => f.path === parsed.sourceRef);
+      if (existing) {
+        existing.hash = hash;
+        existing.size = size;
+        existing.updatedAt = now;
+        existing.category = category;
+      } else {
+        data.files.push({
+          path: parsed.sourceRef,
+          hash: hash,
+          size: size,
+          updatedAt: now,
+          category: category
+        });
+      }
     } else if (parsed.action === "update" && parsed.sourceRef) {
       const entry = data.files.find(f => f.path === parsed.sourceRef);
       if (entry) {
@@ -389,7 +563,7 @@ class BWTEngine {
   }
 
   // --- Step 7: records_digest.txt.tmp 갱신 ---
-  _updateDigestTmp(parsed) {
+  _updateDigestTmp() {
     const recordsTmpPath = path.join(this.indexDir, "records.jsonl.tmp");
     const digestPath = path.join(this.indexDir, "records_digest.txt");
     const tmpPath = digestPath + ".tmp";
@@ -403,23 +577,35 @@ class BWTEngine {
   }
 
   // --- Step 9a: commit ---
-  _commit() {
+  _commit(parsed) {
     // 모든 .tmp를 원본으로 rename (부분 실패 시 되돌림)
     const committed = [];
     for (const tmpFile of this.tmpFiles) {
       const originalPath = tmpFile.replace(/\.tmp$/, "");
       try {
-        fs.renameSync(tmpFile, originalPath);
+        renameWithRetry(tmpFile, originalPath);
         committed.push({ tmp: tmpFile, original: originalPath });
       } catch (err) {
-        // 이미 rename된 파일들을 .tmp로 되돌림
-        for (const { tmp, original } of committed.reverse()) {
-          try { fs.renameSync(original, tmp); } catch { /* best effort */ }
+        // 원본을 .tmp로 되돌리면 다음 BWT의 잔류 tmp 정리가 정본을 삭제할 수 있다.
+        // 백업이 없는 신규 파일만 제거하고, 기존 파일은 outer rollback이 .bak에서 복원한다.
+        for (const { original } of committed) {
+          const backup = this.bakFiles.find(item => item.original === original);
+          if (!backup) {
+            try { if (fs.existsSync(original)) fs.unlinkSync(original); } catch { /* rollback에서 보고 */ }
+          }
         }
         throw err; // execute()의 catch → _rollback() 호출
       }
     }
-    // .bak 정리
+
+    try {
+      this._syncToSqlite(parsed);
+    } catch (error) {
+      error.step = 9;
+      throw error;
+    }
+
+    // DB까지 반영된 뒤 .bak을 정리한다.
     for (const { bak } of this.bakFiles) {
       try {
         fs.unlinkSync(bak);
@@ -429,27 +615,93 @@ class BWTEngine {
     }
     this.bakFiles = [];
     this.tmpFiles = [];
+
+    // links.jsonl 자동 compact (1MB 초과 시)
+    this._autoCompactLinks();
+  }
+  // --- links.jsonl 자동 compact ---
+  _autoCompactLinks() {
+    try {
+      const { isCompactNeeded, compactLinks } = require("./links");
+      if (!isCompactNeeded(this.brainRoot)) return;
+
+      const recordsPath = path.join(this.indexDir, "records.jsonl");
+      const records = readJsonl(recordsPath);
+      const { before, after } = compactLinks(this.brainRoot, records);
+
+      const savedKB = Math.round((before - after) * 150 / 1024); // 링크당 ~150bytes 추정
+      process.stdout.write(
+        `\n⚡ links 자동 정리: ${before.toLocaleString()}개 → ${after.toLocaleString()}개 (약 ${savedKB}KB 절약)\n`
+      );
+    } catch {
+      // compact 실패는 조용히 무시 — 핵심 트랜잭션에 영향 없음
+    }
   }
 
+  // --- SQLite 동기화 ---
+  _syncToSqlite(parsed) {
+    if (parsed.action === "delete") return;
+
+    const { isDbAvailable, getDb, insertRecord, upsertRecord } = require("./db");
+    if (!isDbAvailable(this.brainRoot)) {
+      if (parsed.action === "create") {
+        throw new Error("records.db가 없어 신규 recordId를 안전하게 저장할 수 없습니다.");
+      }
+      return;
+    }
+
+    const records = readJsonl(path.join(this.indexDir, "records.jsonl"));
+    const record = records.find(item => item.recordId === parsed.recordId);
+    if (!record) {
+      throw new Error(`SQLite 동기화 대상 레코드 미발견: ${parsed.recordId}`);
+    }
+
+    const db = getDb(this.brainRoot);
+    try {
+      if (parsed.action === "create") {
+        insertRecord(db, record);
+      } else {
+        upsertRecord(db, record);
+      }
+    } finally {
+      db.close();
+    }
+  }
   // --- Step 9b: rollback ---
   _rollback() {
-    // .tmp 삭제
-    for (const tmpFile of this.tmpFiles) {
-      try {
-        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
-      } catch { /* ignore */ }
-    }
-    // .bak -> 원본 복원
+    const restoreFailures = [];
+    const restoredBackups = new Set();
+
+    // .bak -> 원본 복원을 먼저 끝낸 뒤 .tmp를 정리한다.
     for (const { original, bak } of this.bakFiles) {
       try {
         if (fs.existsSync(bak)) {
-          fs.copyFileSync(bak, original);
+          copyFileWithRetry(bak, original);
+          if (!fs.existsSync(original) || fs.statSync(original).size !== fs.statSync(bak).size) {
+            throw new Error(`백업 복원 크기 불일치: ${original}`);
+          }
           fs.unlinkSync(bak);
+          restoredBackups.add(bak);
         }
-      } catch { /* 최선의 노력 복구 */ }
+      } catch (error) {
+        restoreFailures.push(`${original}: ${error.message}`);
+      }
     }
-    this.bakFiles = [];
+
+    for (const tmpFile of this.tmpFiles) {
+      try {
+        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+      } catch (error) {
+        restoreFailures.push(`${tmpFile}: ${error.message}`);
+      }
+   }
+
+    this.bakFiles = this.bakFiles.filter(item => !restoredBackups.has(item.bak));
+    if (restoreFailures.length === 0) {
+      this.bakFiles = [];
+    }
     this.tmpFiles = [];
+    return restoreFailures;
   }
 
   // --- 헬퍼: 영향받는 파일 목록 ---
@@ -460,7 +712,7 @@ class BWTEngine {
       path.join(this.indexDir, "records_digest.txt")
     ];
 
-    if (parsed.sourceRef && (parsed.action === "update" || parsed.action === "delete")) {
+    if (parsed.sourceRef && ["create", "update", "delete"].includes(parsed.action)) {
       const docPath = path.join(this.brainRoot, parsed.sourceRef);
       if (fs.existsSync(docPath)) {
         files.push(docPath);
@@ -476,6 +728,7 @@ class BWTEngine {
     if (sourceRef.startsWith("10_projects/")) return "project";
     if (sourceRef.startsWith("20_agents/")) return "agent";
     if (sourceRef.startsWith("30_topics/")) return "topic";
+    if (sourceRef.startsWith("40_wiki/")) return "wiki";
     if (sourceRef.startsWith("90_index/")) return "index";
     if (sourceRef.startsWith("99_policy/")) return "policy";
     return "other";
@@ -485,7 +738,7 @@ class BWTEngine {
   _computeSummary(files) {
     const summary = {
       totalFiles: files.length,
-      byCategory: { policy: 0, user: 0, project: 0, agent: 0, topic: 0, index: 0 }
+      byCategory: { policy: 0, user: 0, project: 0, agent: 0, topic: 0, wiki: 0, index: 0 }
     };
     for (const f of files) {
       if (summary.byCategory[f.category] !== undefined) {
@@ -496,4 +749,4 @@ class BWTEngine {
   }
 }
 
-module.exports = { BWTEngine };
+module.exports = { BWTEngine, BWT_LOCK_TIMEOUT_MS };

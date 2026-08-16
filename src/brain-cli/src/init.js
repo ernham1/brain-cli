@@ -27,6 +27,7 @@ function init(targetDir) {
     "10_projects",
     "20_agents",
     "30_topics",
+    "40_wiki",
     "90_index",
     "99_policy",
     "99_policy/templates"
@@ -68,6 +69,7 @@ function init(targetDir) {
       { path: "10_projects/", purpose: "프로젝트별 격리된 기억", scopeType: "project", autoCreate: false },
       { path: "20_agents/", purpose: "에이전트 정의/역할/룰", scopeType: "agent", autoCreate: false },
       { path: "30_topics/", purpose: "통제된 자율 확장 구역", scopeType: "topic", autoCreate: true },
+      { path: "40_wiki/", purpose: "카파시 Wiki 레이어 — Raw를 정제한 통합 지식", scopeType: "topic", autoCreate: true },
       { path: "90_index/", purpose: "검색/회수의 핵심 인덱스", scopeType: null, autoCreate: false },
       { path: "99_policy/", purpose: "운영 규칙", scopeType: null, autoCreate: false }
     ]

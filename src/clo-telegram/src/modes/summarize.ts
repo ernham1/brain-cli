@@ -1,0 +1,118 @@
+// 짐(nfx-ollama) 요약 호출 래퍼
+// 실패해도 throw 하지 않음 — meeting-mode.ts가 호출 결과를 그대로 파일에 기록
+
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+const PYTHON_PATH = 'C:/Users/ernham/AppData/Local/Programs/Python/Python313/python.exe';
+const NFX_OLLAMA_CWD = 'D:/Projects/rtx6000pro';
+
+export async function summarizeWithJim(transcript: string, title?: string): Promise<string> {
+  const prompt = [
+    `다음은 ${title ? `"${title}" ` : ''}회의 기록이야. 300자 이내로 핵심만 요약해줘.`,
+    '',
+    '요약 형식:',
+    '- 핵심 결정사항 (있으면)',
+    '- 논의된 주요 주제',
+    '- 액션 아이템 (있으면)',
+    '',
+    '회의 기록:',
+    transcript.slice(0, 4000),
+  ].join('\n');
+
+  const pythonCode = [
+    `import sys`,
+    `sys.stdout.reconfigure(encoding='utf-8')`,
+    `from nfx_ollama import ask`,
+    `print(ask('짐', ${JSON.stringify(prompt)}))`,
+  ].join('\n');
+
+  try {
+    const { stdout } = await execFileAsync(PYTHON_PATH, ['-c', pythonCode], {
+      cwd: NFX_OLLAMA_CWD,
+      timeout: 60000,
+      encoding: 'utf-8',
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const result = stdout.trim();
+    return result || buildFallbackSummary(transcript, title, '짐이 빈 응답을 반환함');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return buildFallbackSummary(transcript, title, msg.slice(0, 200));
+  }
+}
+
+export function buildFallbackSummary(transcript: string, title?: string, reason?: string): string {
+  const chunks = extractTranscriptChunks(transcript);
+  const important = pickImportantChunks(chunks);
+  const actions = important
+    .filter((chunk) => /(해야|준비|제출|작성|검토|협의|팔로우|확인|예정|계획|만들)/.test(chunk))
+    .slice(0, 4);
+
+  const topicLine = title
+    ? `- 주요 주제: ${title}`
+    : `- 주요 주제: ${trimText((important[0] ?? chunks[0] ?? '회의 원문 확인 필요'), 180)}`;
+
+  const discussionLines = important.slice(0, 4).map((chunk) => `  - ${trimText(chunk, 180)}`);
+  const actionLines = actions.length > 0
+    ? actions.map((chunk) => `  - ${trimText(chunk, 160)}`)
+    : ['  - 원문 기준 명시적 액션 아이템은 별도 확인 필요'];
+
+  return [
+    `_로컬 LLM 연결 불가로 원문 기반 자동 요약을 사용합니다${reason ? `: ${reason}` : ''}_`,
+    '',
+    topicLine,
+    '- 핵심 결정사항/논의:',
+    ...(discussionLines.length > 0 ? discussionLines : ['  - 원문 확인 필요']),
+    '- 액션 아이템:',
+    ...actionLines,
+  ].join('\n');
+}
+
+function extractTranscriptChunks(transcript: string): string[] {
+  return transcript
+    .split(/\n+/)
+    .flatMap((line) => {
+      const cleaned = line
+        .replace(/^\[\d{2}:\d{2}\]\s*/, '')
+        .replace(/^🎙\s*/, '')
+        .replace(/\(\d+초\)\s*$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!cleaned) return [];
+      const sentenceParts = cleaned.split(/(?<=[.!?。！？])\s+/).filter(Boolean);
+      const parts = sentenceParts.length > 1 ? sentenceParts : splitLongText(cleaned, 260);
+      return parts.map((part) => part.trim()).filter((part) => part.length > 20);
+    });
+}
+
+function splitLongText(text: string, size: number): string[] {
+  const chunks: string[] = [];
+  for (let index = 0; index < text.length; index += size) {
+    chunks.push(text.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function pickImportantChunks(chunks: string[]): string[] {
+  const keywords = /(결정|핵심|문제|이슈|예정|계획|제출|준비|계약|검수|신규|RFP|AI|인공지능|액션|다음 주|월요일|6월|7월|11월|OBTS|SDS|유도무기|RCBT)/i;
+  const picked = chunks.filter((chunk) => keywords.test(chunk));
+  return dedupeChunks(picked.length > 0 ? picked : chunks).slice(0, 6);
+}
+
+function dedupeChunks(chunks: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const chunk of chunks) {
+    const key = chunk.slice(0, 80);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(chunk);
+  }
+  return result;
+}
+
+function trimText(text: string, maxLength: number): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}

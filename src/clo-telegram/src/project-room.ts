@@ -1,0 +1,262 @@
+/**
+ * 프로젝트 방 관리 — chatId ↔ 프로젝트 매핑.
+ *
+ * 텔레그램 그룹(또는 DM)을 프로젝트 전용 방으로 등록/해제한다.
+ * 등록된 방에서는 시스템 프롬프트에 프로젝트 컨텍스트가 자동 주입되고,
+ * brain_recall / 오케스트레이터 디스패치가 해당 프로젝트로 필터링된다.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import type { VscBridge, DesktopStatusSnapshot } from "./bridge.js";
+
+export interface ProjectRoomConfig {
+  /** 텔레그램 chatId (그룹이면 음수) */
+  chatId: number;
+  /** 프로젝트 이름 (예: "AIOS", "AgentForge") */
+  projectName: string;
+  /** 작업 디렉토리 절대 경로 */
+  projectPath: string;
+  /** Brain recall 필터 태그 (scopeId) */
+  brainScopeId: string;
+  /** 등록 시각 */
+  createdAt: string;
+  /** 등록자 userId */
+  createdBy?: number;
+  /** 비활성화 여부 (삭제 대신 비활성) */
+  archived?: boolean;
+  /** 아카이브 시각 */
+  archivedAt?: string;
+}
+
+const FILE_NAME = "project-rooms.json";
+
+export class ProjectRoomStore {
+  private readonly filePath: string;
+  private rooms: ProjectRoomConfig[] = [];
+  private bridge: VscBridge | null = null;
+
+  constructor(dataDir: string) {
+    this.filePath = path.join(dataDir, FILE_NAME);
+    this.load();
+  }
+
+  /** VscBridge 참조를 설정한다. bridge가 ProjectRoomStore보다 늦게 생성될 수 있으므로 setter 제공. */
+  setBridge(bridge: VscBridge): void {
+    this.bridge = bridge;
+  }
+
+  /** 활성 프로젝트 방 목록 */
+  listActive(): ProjectRoomConfig[] {
+    return this.rooms.filter((r) => !r.archived);
+  }
+
+  /** 아카이브 포함 전체 목록 */
+  listAll(): ProjectRoomConfig[] {
+    return [...this.rooms];
+  }
+
+  /** chatId로 프로젝트 방 찾기 (활성만) */
+  findByChatId(chatId: number): ProjectRoomConfig | undefined {
+    return this.rooms.find((r) => r.chatId === chatId && !r.archived);
+  }
+
+  /** 프로젝트명으로 찾기 (활성만) */
+  findByProjectName(projectName: string): ProjectRoomConfig | undefined {
+    const lower = projectName.toLowerCase();
+    return this.rooms.find(
+      (r) => r.projectName.toLowerCase() === lower && !r.archived,
+    );
+  }
+
+  /** 프로젝트 방 등록 */
+  register(config: Omit<ProjectRoomConfig, "createdAt">): ProjectRoomConfig {
+    // 동일 chatId 기존 등록이 있으면 아카이브 처리
+    const existing = this.rooms.find((r) => r.chatId === config.chatId && !r.archived);
+    if (existing) {
+      existing.archived = true;
+      existing.archivedAt = new Date().toISOString();
+    }
+
+    // 동일 프로젝트명 기존 등록이 있으면 아카이브 처리
+    const existingByName = this.rooms.find(
+      (r) => r.projectName.toLowerCase() === config.projectName.toLowerCase() && !r.archived,
+    );
+    if (existingByName && existingByName.chatId !== config.chatId) {
+      existingByName.archived = true;
+      existingByName.archivedAt = new Date().toISOString();
+    }
+
+    const room: ProjectRoomConfig = {
+      ...config,
+      createdAt: new Date().toISOString(),
+    };
+    this.rooms.push(room);
+    this.save();
+    return room;
+  }
+
+  /** 프로젝트 방 아카이브 (chatId 기준) */
+  archiveByChatId(chatId: number): ProjectRoomConfig | undefined {
+    const room = this.rooms.find((r) => r.chatId === chatId && !r.archived);
+    if (room) {
+      room.archived = true;
+      room.archivedAt = new Date().toISOString();
+      this.save();
+    }
+    return room;
+  }
+
+  /** 프로젝트 방 아카이브 (프로젝트명 기준) */
+  archiveByProjectName(projectName: string): ProjectRoomConfig | undefined {
+    const lower = projectName.toLowerCase();
+    const room = this.rooms.find(
+      (r) => r.projectName.toLowerCase() === lower && !r.archived,
+    );
+    if (room) {
+      room.archived = true;
+      room.archivedAt = new Date().toISOString();
+      this.save();
+    }
+    return room;
+  }
+
+  /** 시스템 프롬프트에 주입할 프로젝트 컨텍스트 섹션 */
+  buildPromptSection(chatId: number): string | null {
+    const room = this.findByChatId(chatId);
+    if (!room) return null;
+
+    const lines = [
+      `## 프로젝트 전용 방`,
+      `- 프로젝트: ${room.projectName}`,
+      `- 작업 경로: ${room.projectPath}`,
+      `- Brain 필터: scopeId="${room.brainScopeId}"`,
+      `- 이 방은 **${room.projectName}** 전용입니다. 파일 탐색, 코드 수정, 명령 실행은 위 작업 경로를 기준으로 수행하세요.`,
+      `- brain_recall 시 "${room.brainScopeId}" 관련 기록을 우선 검색하세요.`,
+      `- 오케스트레이터 작업 디스패치 시 targetCwd와 projectHint를 위 값으로 자동 설정합니다.`,
+      `- 다른 프로젝트 이야기가 나오면 해당 프로젝트 방이나 메인 방에서 다루도록 안내하세요.`,
+    ];
+
+    // 데스크톱 세션 정보 자동 주입
+    const desktopStatus = this.getDesktopStatus(room.projectPath);
+    if (desktopStatus) {
+      lines.push("", "### 데스크톱(VS Code) 세션 현황");
+      if (desktopStatus.session) {
+        const s = desktopStatus.session;
+        lines.push(`- **상태**: ${s.status ?? "unknown"}`);
+        lines.push(`- **세션 시작**: ${s.startedAt}`);
+        if (s.lastActivity) lines.push(`- **마지막 활동**: ${s.lastActivity}`);
+        if (s.currentTask) lines.push(`- **현재 작업**: ${s.currentTask}`);
+        if (s.recentFiles && s.recentFiles.length > 0) {
+          lines.push(`- **세션 수정 파일**: ${s.recentFiles.slice(0, 8).join(", ")}`);
+        }
+        // lastActivity가 1시간 이상 전이면 watcher 갱신 중단 경고
+        if (s.lastActivity) {
+          const activityAge = Date.now() - Date.parse(s.lastActivity);
+          if (activityAge > 60 * 60 * 1000) {
+            const hoursAgo = Math.round(activityAge / (60 * 60 * 1000));
+            lines.push(`- ⚠️ **lastActivity가 약 ${hoursAgo}시간 전** — watcher 갱신이 멈췄을 수 있음. 이사님이 데탑 상태를 물으면 프로젝트 경로의 최근 파일 변경을 직접 스캔하세요.`);
+          }
+        }
+      } else {
+        lines.push("- vscode-active.json에 세션 기록 없음");
+      }
+      if (desktopStatus.recentlyModifiedFiles.length > 0) {
+        const fileList = desktopStatus.recentlyModifiedFiles
+          .slice(0, 10)
+          .map((f) => {
+            const rel = f.filePath.replace(room.projectPath.replace(/\\/g, "/"), "").replace(/^\//, "");
+            return `${rel} (${new Date(f.modifiedAt).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul" })})`;
+          })
+          .join(", ");
+        lines.push(`- **최근 2시간 변경 파일**: ${fileList}`);
+      }
+      lines.push(
+        "- 이 정보는 프롬프트 생성 시점의 스냅샷입니다. 이사님이 데탑 작업 상태를 물으면 이 정보를 기반으로 답하되, 최신성이 의심되면 vscode-active.json과 파일 시스템을 직접 재확인하세요.",
+      );
+    } else {
+      // desktopStatus가 null이어도 vscode-active.json에 세션이 남아 있을 수 있음
+      // (lastActivity가 2시간 이상 전이라 파일 스캔도 빈 결과인 경우)
+      lines.push(
+        "",
+        "### 데스크톱(VS Code) 세션 현황",
+        "- 프롬프트 생성 시점 기준 활성 세션 또는 최근 변경 파일 없음",
+        "- 이사님이 데탑 작업 상태를 물으면 `vscode-active.json`을 직접 읽고 프로젝트 경로의 최근 파일 변경을 스캔하세요.",
+      );
+    }
+
+    return lines.join("\n");
+  }
+
+  /** bridge를 통해 프로젝트의 데스크톱 세션 상태를 조회한다 */
+  private getDesktopStatus(projectPath: string): DesktopStatusSnapshot | null {
+    if (!this.bridge) return null;
+    try {
+      return this.bridge.getProjectDesktopStatus(projectPath);
+    } catch {
+      return null;
+    }
+  }
+
+  private load(): void {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        this.rooms = JSON.parse(fs.readFileSync(this.filePath, "utf-8")) as ProjectRoomConfig[];
+      }
+    } catch {
+      this.rooms = [];
+    }
+  }
+
+  private save(): void {
+    const dir = path.dirname(this.filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const tmpPath = `${this.filePath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(this.rooms, null, 2), "utf-8");
+    fs.renameSync(tmpPath, this.filePath);
+  }
+}
+
+/**
+ * 잘 알려진 프로젝트 경로 목록.
+ * 이사님이 "AIOS"라고만 말해도 경로를 자동 매핑.
+ */
+export const KNOWN_PROJECTS: Record<string, { path: string; brainScopeId: string }> = {
+  aios: { path: "D:/Projects/AIOS", brainScopeId: "aios" },
+  agentforge: { path: "D:/Projects/Brain/packages/agentforge", brainScopeId: "agentforge" },
+  brain: { path: "D:/Projects/Brain", brainScopeId: "brain" },
+  aresvlm: { path: "D:/Projects/AresVlm", brainScopeId: "aresvlm" },
+  "ares-vlm": { path: "D:/Projects/AresVlm", brainScopeId: "aresvlm" },
+  nexus: { path: "D:/Projects/Nexus", brainScopeId: "nexus" },
+  cabletray: { path: "D:/Projects/CableTray", brainScopeId: "cabletray" },
+  "clo-telegram": { path: "D:/Projects/Brain/src/clo-telegram", brainScopeId: "clo-telegram" },
+  teleclo: { path: "D:/Projects/Brain/src/clo-telegram", brainScopeId: "clo-telegram" },
+  teamengram: { path: "D:/Projects/TeamEngram", brainScopeId: "teamengram" },
+  "defense-proposal": { path: "D:/Projects/DefenseProposal", brainScopeId: "defense-proposal" },
+  autoproposal: { path: "D:/Projects/AutoProposal", brainScopeId: "autoproposal" },
+  patentforge: { path: "D:/Projects/PatentForge", brainScopeId: "patentforge" },
+  r12: { path: "D:/Projects/R12", brainScopeId: "r12" },
+  vision21: { path: "D:/Projects/Vision21", brainScopeId: "vision21" },
+};
+
+/**
+ * 프로젝트명(자연어)에서 경로와 brainScopeId를 추론.
+ * KNOWN_PROJECTS에 없으면 null 반환.
+ */
+export function resolveKnownProject(
+  projectName: string,
+): { projectName: string; path: string; brainScopeId: string } | null {
+  const lower = projectName.toLowerCase().replace(/[\s\-_]+/g, "");
+  // 정확히 매치
+  for (const [key, value] of Object.entries(KNOWN_PROJECTS)) {
+    if (key.replace(/[\s\-_]+/g, "") === lower) {
+      return { projectName: key, ...value };
+    }
+  }
+  // 부분 매치 (포함)
+  for (const [key, value] of Object.entries(KNOWN_PROJECTS)) {
+    if (lower.includes(key.replace(/[\s\-_]+/g, "")) || key.replace(/[\s\-_]+/g, "").includes(lower)) {
+      return { projectName: key, ...value };
+    }
+  }
+  return null;
+}

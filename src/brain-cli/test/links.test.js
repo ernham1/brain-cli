@@ -8,7 +8,7 @@ const os = require("os");
 
 const {
   addLink, removeLink, getLinksFor, getLinkedBoosts,
-  autoLink, readLinks, writeLinks, _tagOverlap, LINK_TYPES,
+  autoLink, readLinks, _tagOverlap, LINK_TYPES,
   _extractScopeId, _inferLinkType
 } = require("../src/links");
 

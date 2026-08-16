@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+"use strict";
+
+// VS Code Claude Code의 Notification hook → Telegram 알림 전달
+// 이벤트: permission_prompt, idle_prompt
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+// clo-telegram의 .env에서 토큰/chatId 로드
+function loadEnv() {
+  const envPath = path.join("__INSTALL_DIR__", ".env");
+  if (!fs.existsSync(envPath)) return {};
+  const lines = fs.readFileSync(envPath, "utf-8").split("\n");
+  const env = {};
+  for (const line of lines) {
+    const match = line.match(/^([A-Z_]+)=(.+)$/);
+    if (match) env[match[1]] = match[2].trim();
+  }
+  return env;
+}
+
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", async () => {
+  try {
+    const data = JSON.parse(input);
+    const type = data.notification_type;
+
+    // permission_prompt와 idle_prompt만 전달
+    if (type !== "permission_prompt" && type !== "idle_prompt") {
+      process.exit(0);
+    }
+
+    const env = loadEnv();
+    const token = env.TELEGRAM_BOT_TOKEN;
+    const chatId = env.OWNER_CHAT_IDS;
+    if (!token || !chatId) process.exit(0);
+
+    const emoji = type === "permission_prompt" ? "\uD83D\uDD14" : "\uD83D\uDCA4";
+    const label = type === "permission_prompt" ? "승인 대기" : "작업 완료";
+    const message = data.message || "";
+    const text = `${emoji} [VS Code 클로] ${label}\n${message}`;
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId.split(",")[0]),
+        text,
+      }),
+    });
+  } catch {
+    // 실패해도 조용히 — hook 실패가 Claude Code 동작을 방해하면 안 됨
+  }
+  process.exit(0);
+});

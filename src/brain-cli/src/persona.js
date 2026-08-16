@@ -108,11 +108,6 @@ const EMOTION_LEVEL_VALUES = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2];
 const FORMALITY_LEVEL_VALUES = ["very_low", "low", "medium", "high", "very_high"];
 const DIRECTNESS_LEVEL_VALUES = [0.3, 0.5, 0.7, 0.9];
 
-const SCOPE_TYPES = ["project", "agent", "user", "topic"];
-const RECORD_TYPES = ["rule", "decision", "profile", "log", "ref", "note", "candidate", "reminder", "project_state"];
-const SOURCE_TYPES = ["user_confirmed", "candidate", "chat_log", "external_doc", "inference"];
-const STATUS_VALUES = ["active", "deprecated", "archived"];
-
 // --- Getter 함수 (lang 기반) ---
 
 function getPersonalityTypes(lang = "en") {

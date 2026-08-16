@@ -27,6 +27,32 @@ function calculateHashFromString(content) {
 }
 
 /**
+ * recordId에 들어갈 scopeId 조각을 검증 가능한 ASCII slug로 정규화한다.
+ * 원본 record.scopeId는 보존하고, recordId 전용 식별자만 안전하게 만든다.
+ * @param {string} scopeId
+ * @returns {string}
+ */
+function normalizeScopeIdForRecordId(scopeId) {
+  const raw = String(scopeId ?? "").trim().toLowerCase();
+  const slug = raw
+    .normalize("NFKD")
+    .replace(/[^\x00-\x7F]/g, "")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "")
+    .slice(0, 64);
+
+  if (slug) return slug;
+
+  const digest = crypto
+    .createHash("sha1")
+    .update(raw || "scope", "utf-8")
+    .digest("hex")
+    .slice(0, 10);
+  return `scope-${digest}`;
+}
+
+/**
  * recordId를 생성한다.
  * @param {string} scopeType - project | agent | user | topic
  * @param {string} scopeId - 대상 ID
@@ -36,13 +62,14 @@ function calculateHashFromString(content) {
 function generateRecordId(scopeType, scopeId, existingRecords) {
   const abbrev = SCOPE_ABBREV[scopeType];
   if (!abbrev) throw new Error(`Unknown scopeType: ${scopeType}`);
+  const recordScopeId = normalizeScopeIdForRecordId(scopeId);
 
   const now = new Date();
   const dateStr = now.getFullYear().toString() +
     String(now.getMonth() + 1).padStart(2, "0") +
     String(now.getDate()).padStart(2, "0");
 
-  const prefix = `rec_${abbrev}_${scopeId}_${dateStr}_`;
+  const prefix = `rec_${abbrev}_${recordScopeId}_${dateStr}_`;
 
   // 같은 날짜의 기존 레코드 수를 세서 순번 결정
   let maxSeq = 0;
@@ -75,7 +102,7 @@ function readJsonl(filePath) {
     try {
       records.push(JSON.parse(line));
     } catch (err) {
-      throw new Error(`JSONL 파싱 오류 (line ${i + 1}): ${err.message}`);
+      process.stderr.write(`[brain-cli] JSONL 파싱 경고 — ${filePath} line ${i + 1} 스킵: ${err.message}\n`);
     }
   }
   return records;
@@ -115,8 +142,8 @@ function findBrainRoot(startDir) {
   while (true) {
     const candidate = path.join(dir, "Brain");
     if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
-      // 90_index/ 폴더가 있는지 추가 확인
-      if (fs.existsSync(path.join(candidate, "90_index"))) {
+      // CLI boot requires manifest.json, not just the index directory.
+      if (hasUsableBrainIndex(candidate)) {
         return candidate;
       }
     }
@@ -127,17 +154,22 @@ function findBrainRoot(startDir) {
   return null;
 }
 
+function hasUsableBrainIndex(brainRoot) {
+  return fs.existsSync(path.join(brainRoot, "90_index", "manifest.json"));
+}
+
 /**
  * 레코드에서 digest 텍스트 한 줄을 생성한다 (8컬럼).
  * @param {Object} record
  * @returns {string} "recordId | title | summary | tags | status | type | sourceType | updatedAt"
  */
 function generateDigestLine(record) {
-  const tags = Array.isArray(record.tags) ? record.tags.join(",") : "";
+  const clean = value => String(value ?? "").replace(/\s+/g, " ").replace(/\|/g, "/").trim();
+  const tags = Array.isArray(record.tags) ? record.tags.map(clean).join(",") : "";
   const type = record.type || "";
   const sourceType = record.sourceType || "candidate";
   const updatedAt = record.updatedAt || "";
-  return `${record.recordId} | ${record.title} | ${record.summary} | ${tags} | ${record.status} | ${type} | ${sourceType} | ${updatedAt}`;
+  return `${clean(record.recordId)} | ${clean(record.title)} | ${clean(record.summary)} | ${tags} | ${clean(record.status)} | ${clean(type)} | ${clean(sourceType)} | ${clean(updatedAt)}`;
 }
 
 // --- 한글 스테밍 (REQ-200~206) ---
@@ -331,40 +363,89 @@ function ensureDir(dirPath) {
 }
 
 /**
+ * CLI 옵션에서 Brain 루트 경로를 결정한다.
+ * 우선순위: --brain → -r/--root → 기본 탐색
+ * @param {Object} options - commander 옵션 객체
+ * @returns {string|null}
+ */
+function resolveBrainRoot(options = {}) {
+  if (options.brain) return require("path").resolve(options.brain);
+  if (options.root) return require("path").resolve(options.root);
+  return getDefaultBrainRoot();
+}
+
+/**
  * 기본 Brain 루트 경로를 반환한다.
- * 우선순위: BRAIN_ROOT 환경변수 → ~/Brain/ → cwd 탐색
+ * 우선순위: BRAIN_ROOT 환경변수 → ~/NeuralfluxBrain/ → ~/Brain/ → cwd 탐색
  * @returns {string|null}
  */
 function getDefaultBrainRoot() {
   // 1. 환경변수
   if (process.env.BRAIN_ROOT) {
     const envRoot = path.resolve(process.env.BRAIN_ROOT);
-    if (fs.existsSync(path.join(envRoot, "90_index"))) return envRoot;
+    if (hasUsableBrainIndex(envRoot)) return envRoot;
   }
 
-  // 2. 홈 디렉토리 ~/Brain/
+  // 2. 홈 디렉토리 ~/NeuralfluxBrain/
   const os = require("os");
-  const homeRoot = path.join(os.homedir(), "Brain");
-  if (fs.existsSync(path.join(homeRoot, "90_index"))) return homeRoot;
+  const neuralfluxRoot = path.join(os.homedir(), "NeuralfluxBrain");
+  if (hasUsableBrainIndex(neuralfluxRoot)) return neuralfluxRoot;
 
-  // 3. cwd 기반 탐색
+  // 3. 홈 디렉토리 ~/Brain/
+  const homeRoot = path.join(os.homedir(), "Brain");
+  if (hasUsableBrainIndex(homeRoot)) return homeRoot;
+
+  // 4. cwd 기반 탐색
   return findBrainRoot(process.cwd());
+}
+
+/**
+ * 현재 디렉토리에서 프로젝트명을 자동 감지한다.
+ * 우선순위: git remote origin > package.json name > 폴더명
+ * @param {string} cwd - 탐색 시작 디렉토리 (기본: process.cwd())
+ * @returns {string}
+ */
+function detectProjectName(cwd = process.cwd()) {
+  const { execSync } = require("child_process");
+
+  // 1. git remote origin URL에서 레포명 추출
+  try {
+    const remote = execSync("git remote get-url origin", { cwd, stdio: ["pipe", "pipe", "pipe"] })
+      .toString().trim();
+    const match = remote.match(/\/([^/]+?)(\.git)?$/);
+    if (match && match[1]) return match[1];
+  } catch { /* git 없거나 remote 없음 */ }
+
+  // 2. package.json name
+  const pkgPath = path.join(cwd, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (pkg.name) return pkg.name.replace(/^@[^/]+\//, ""); // scoped package 처리
+    } catch { /* 파싱 실패 */ }
+  }
+
+  // 3. 현재 폴더명
+  return path.basename(cwd);
 }
 
 module.exports = {
   calculateHash,
   calculateHashFromString,
   generateRecordId,
+  normalizeScopeIdForRecordId,
   readJsonl,
   writeJsonl,
   safeReadJson,
   findBrainRoot,
   getDefaultBrainRoot,
+  resolveBrainRoot,
   generateDigestLine,
   isoNow,
   ensureDir,
   loadSynonyms,
   _resetSynonymCache,
   stemKorean,
-  normalizeTokens
+  normalizeTokens,
+  detectProjectName
 };

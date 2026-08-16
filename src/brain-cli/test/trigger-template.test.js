@@ -4,7 +4,6 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { getSeedStrategies, SEED_STRATEGIES } = require("../src/meta-strategy");
 const { classify } = require("../src/classifier");
-const { _executeSequence } = require("../src/meta-recall");
 
 // === SB03: TriggerTemplateEnrichment 테스트 ===
 

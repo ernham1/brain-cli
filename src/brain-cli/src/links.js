@@ -24,7 +24,10 @@ function readLinks(brainRoot) {
  */
 function writeLinks(brainRoot, links) {
   const linksPath = path.join(brainRoot, "90_index", "links.jsonl");
-  writeJsonl(linksPath, links);
+  // .lnk.new 사용 — BWT가 감시하는 .tmp 확장자와 충돌 방지
+  const stagePath = linksPath + ".lnk.new";
+  writeJsonl(stagePath, links);
+  fs.renameSync(stagePath, linksPath);
 }
 
 /**
@@ -42,20 +45,26 @@ function addLink(brainRoot, fromId, toId, linkType = "related") {
     throw new Error(`Invalid linkType: ${linkType} (allowed: ${LINK_TYPES.join(", ")})`);
   }
 
-  const links = readLinks(brainRoot);
+  const { acquireLock } = require("./lock");
+  const lock = acquireLock(brainRoot);
+  try {
+    const links = readLinks(brainRoot);
 
-  // 중복 체크 (양방향)
-  const exists = links.some(l =>
-    (l.fromId === fromId && l.toId === toId) ||
-    (l.fromId === toId && l.toId === fromId && l.linkType === linkType)
-  );
-  if (exists) return { added: false, link: null };
+    // 중복 체크 (양방향)
+    const exists = links.some(l =>
+      (l.fromId === fromId && l.toId === toId) ||
+      (l.fromId === toId && l.toId === fromId && l.linkType === linkType)
+    );
+    if (exists) return { added: false, link: null };
 
-  const link = { fromId, toId, linkType, createdAt: isoNow() };
-  links.push(link);
-  writeLinks(brainRoot, links);
+    const link = { fromId, toId, linkType, createdAt: isoNow() };
+    links.push(link);
+    writeLinks(brainRoot, links);
 
-  return { added: true, link };
+    return { added: true, link };
+  } finally {
+    lock.release();
+  }
 }
 
 /**
@@ -172,45 +181,65 @@ function _inferLinkType(newRecord, existing) {
   return "related";
 }
 
+// autoLink 최대 링크 수 (레코드당)
+const AUTO_LINK_MAX = 20;
+
+// autoLink 제외 타입 (일지성 기록은 링크 불필요)
+const AUTO_LINK_SKIP_TYPES = new Set(["log"]);
+
 /**
  * 새 레코드 생성 시 기존 레코드들과 자동으로 링크를 생성한다.
  * 조건: 태그 Jaccard ≥ 0.5 또는 제목 토큰 겹침 ≥ 50%
+ * log 타입 레코드는 링크 생성에서 제외한다 (work-log 폭발 방지).
+ * 레코드당 최대 AUTO_LINK_MAX개까지만 생성한다.
  * @param {string} brainRoot
  * @param {Object} newRecord - 새로 생성된 레코드
  * @param {Object[]} existingDigest - 기존 digest 레코드 배열
  * @returns {number} 생성된 링크 수
  */
 function autoLink(brainRoot, newRecord, existingDigest) {
-  let linkCount = 0;
-  const newTags = newRecord.tags || [];
-  const newTitleTokens = new Set(normalizeTokens(newRecord.title || ""));
+  // log 타입은 autoLink 제외 — 일지성 기록 간 O(N²) 링크 폭발 방지
+  if (AUTO_LINK_SKIP_TYPES.has(newRecord.type)) return 0;
 
-  for (const existing of existingDigest) {
-    if (existing.recordId === newRecord.recordId) continue;
-    if (existing.status !== "active") continue;
+  const { acquireLock } = require("./lock");
+  const lock = acquireLock(brainRoot);
+  try {
+    let linkCount = 0;
+    const newTags = newRecord.tags || [];
+    const newTitleTokens = new Set(normalizeTokens(newRecord.title || ""));
 
-    // 태그 유사도 체크
-    const tagSim = _tagOverlap(newTags, existing.tags || []);
+    for (const existing of existingDigest) {
+      if (linkCount >= AUTO_LINK_MAX) break;
+      if (existing.recordId === newRecord.recordId) continue;
+      if (existing.status !== "active") continue;
+      if (AUTO_LINK_SKIP_TYPES.has(existing.type)) continue;
 
-    // 제목 토큰 겹침 체크
-    const existTitleTokens = new Set(normalizeTokens(existing.title || ""));
-    let titleOverlap = 0;
-    if (newTitleTokens.size > 0 && existTitleTokens.size > 0) {
-      let common = 0;
-      for (const t of newTitleTokens) {
-        if (existTitleTokens.has(t)) common++;
+      // 태그 유사도 체크
+      const tagSim = _tagOverlap(newTags, existing.tags || []);
+
+      // 제목 토큰 겹침 체크
+      const existTitleTokens = new Set(normalizeTokens(existing.title || ""));
+      let titleOverlap = 0;
+      if (newTitleTokens.size > 0 && existTitleTokens.size > 0) {
+        let common = 0;
+        for (const t of newTitleTokens) {
+          if (existTitleTokens.has(t)) common++;
+        }
+        titleOverlap = common / Math.min(newTitleTokens.size, existTitleTokens.size);
       }
-      titleOverlap = common / Math.min(newTitleTokens.size, existTitleTokens.size);
+
+      if (tagSim >= 0.5 || titleOverlap >= 0.5) {
+        const linkType = _inferLinkType(newRecord, existing);
+        // addLink 내부에서 재진입 락 — 데드락 없음
+        const result = addLink(brainRoot, newRecord.recordId, existing.recordId, linkType);
+        if (result.added) linkCount++;
+      }
     }
 
-    if (tagSim >= 0.5 || titleOverlap >= 0.5) {
-      const linkType = _inferLinkType(newRecord, existing);
-      const result = addLink(brainRoot, newRecord.recordId, existing.recordId, linkType);
-      if (result.added) linkCount++;
-    }
+    return linkCount;
+  } finally {
+    lock.release();
   }
-
-  return linkCount;
 }
 
 /**
@@ -221,22 +250,83 @@ function autoLink(brainRoot, newRecord, existingDigest) {
  * @returns {boolean} 제거 여부
  */
 function removeLink(brainRoot, fromId, toId) {
-  const links = readLinks(brainRoot);
-  const before = links.length;
-  const filtered = links.filter(l =>
-    !((l.fromId === fromId && l.toId === toId) ||
-      (l.fromId === toId && l.toId === fromId))
-  );
-  if (filtered.length === before) return false;
-  writeLinks(brainRoot, filtered);
-  return true;
+  const { acquireLock } = require("./lock");
+  const lock = acquireLock(brainRoot);
+  try {
+    const links = readLinks(brainRoot);
+    const before = links.length;
+    const filtered = links.filter(l =>
+      !((l.fromId === fromId && l.toId === toId) ||
+        (l.fromId === toId && l.toId === fromId))
+    );
+    if (filtered.length === before) return false;
+    writeLinks(brainRoot, filtered);
+    return true;
+  } finally {
+    lock.release();
+  }
+}
+
+// 자동 compact 임계값 (bytes)
+const COMPACT_THRESHOLD_BYTES = 1 * 1024 * 1024; // 1MB
+
+/**
+ * links.jsonl에서 고아 링크와 log×log 링크를 제거한다.
+ * 임계값 초과 시 자동 호출되거나 수동으로 실행할 수 있다.
+ * @param {string} brainRoot
+ * @param {Object[]} activeRecords - records.jsonl의 활성 레코드 배열
+ * @returns {{ before: number, after: number }} 정리 전후 링크 수
+ */
+function compactLinks(brainRoot, activeRecords) {
+  const { acquireLock } = require("./lock");
+  const lock = acquireLock(brainRoot);
+  try {
+    const activeIds = new Set(activeRecords.filter(r => r.status === "active").map(r => r.recordId));
+    const logTypeIds = new Set(activeRecords.filter(r => r.type === "log").map(r => r.recordId));
+
+    const links = readLinks(brainRoot);
+    const before = links.length;
+
+    const seen = new Set();
+    const filtered = links.filter(link => {
+      if (!activeIds.has(link.fromId) || !activeIds.has(link.toId)) return false;
+      if (logTypeIds.has(link.fromId) && logTypeIds.has(link.toId)) return false;
+      const key = [link.fromId, link.toId, link.linkType].sort().join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    writeLinks(brainRoot, filtered);
+    return { before, after: filtered.length };
+  } finally {
+    lock.release();
+  }
+}
+
+/**
+ * links.jsonl 크기가 임계값을 초과하는지 확인한다.
+ * @param {string} brainRoot
+ * @returns {boolean}
+ */
+function isCompactNeeded(brainRoot) {
+  try {
+    const linksPath = path.join(brainRoot, "90_index", "links.jsonl");
+    if (!fs.existsSync(linksPath)) return false;
+    return fs.statSync(linksPath).size > COMPACT_THRESHOLD_BYTES;
+  } catch {
+    return false;
+  }
 }
 
 module.exports = {
   LINK_TYPES,
+  COMPACT_THRESHOLD_BYTES,
   readLinks,
   writeLinks,
   addLink,
+  compactLinks,
+  isCompactNeeded,
   getLinksFor,
   getLinkedBoosts,
   autoLink,

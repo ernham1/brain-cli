@@ -1,0 +1,19 @@
+{
+  "id": "dj-20260816-1755-brr2",
+  "ts": "2026-08-16T17:55:17.319+09:00",
+  "session": "codex-desktop-brain-repository-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_RETRY] #데이터복구 Brain REC-01 재시도. 이전 접근 H:/Brain-Recovery/20260816은 볼륨 Warning / Full Repair Needed로 기각한다. 새 접근은 H/E를 모두 제외하고, D:/Projects 원본 심볼릭 링크 밖의 Healthy/OK 별도 C: NTFS 경로 C:/Brain-Recovery/20260816을 사용한다. 광웅 이사님 지시: 이어서 진행.",
+  "options": [
+    "C:/Brain-Recovery/20260816에서 격리 복구 계속",
+    "H: 파일시스템 수리 후 재시도",
+    "E: 보안 USB 사용"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

@@ -7,15 +7,40 @@ Brain_기획안*.md
 
 # === Internal tools ===
 tools/
+!tools/
+tools/*
+!tools/codex-sdk-run.ps1
+src/clo-telegram/tools/
+!src/clo-telegram/tools/
+src/clo-telegram/tools/*
+!src/clo-telegram/tools/codex-sdk-run.py
 
-# === Personal settings ===
+# === Agent/IDE personal settings ===
 .claude/
 .mcp.json
 CLAUDE.md
+AGENTS.md
+.agents/
+.codex/
+.handoff/
 
 # === Temp files ===
 tmp_intent.json
 scratchpad/
+temp/
+/temp_*
+/.playwright-mcp/
+/*.png
+src/clo-telegram/logs/
+src/clo-telegram/data/bridge/
+
+# === Binary / large assets ===
+docs/screenshots/
+docs/share/
+
+# === Python cache ===
+__pycache__/
+*.pyc
 
 # === Node.js ===
 node_modules/

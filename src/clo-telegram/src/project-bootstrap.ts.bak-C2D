@@ -1,0 +1,115 @@
+import fs from "node:fs";
+import path from "node:path";
+
+const DEFAULT_PROJECT_ROOT = "C:/Projects";
+const ROUTE_PREFIX_RE = /^@(D|데스크탑|vscode)\s+/i;
+const PROJECT_NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{0,79}$/u;
+
+export interface ProjectBootstrapRequest {
+  projectName: string;
+  projectPath: string;
+  taskInstruction: string;
+  originalInstruction: string;
+}
+
+export interface ProjectBootstrapOptions {
+  projectRoot?: string;
+}
+
+export function parseProjectBootstrapRequest(
+  text: string,
+  options: ProjectBootstrapOptions = {},
+): ProjectBootstrapRequest | null {
+  const originalInstruction = normalize(text.replace(ROUTE_PREFIX_RE, ""));
+  if (!looksLikeBootstrapRequest(originalInstruction)) return null;
+
+  const projectName = extractProjectName(originalInstruction);
+  const taskInstruction = extractTaskInstruction(originalInstruction);
+  if (!projectName || !taskInstruction) return null;
+
+  const projectRoot = options.projectRoot ?? process.env.CLO_PROJECT_ROOT ?? DEFAULT_PROJECT_ROOT;
+  const projectPath = resolveProjectPath(projectRoot, projectName);
+
+  return {
+    projectName,
+    projectPath,
+    taskInstruction,
+    originalInstruction,
+  };
+}
+
+export function ensureProjectDirectory(request: ProjectBootstrapRequest): void {
+  fs.mkdirSync(request.projectPath, { recursive: true });
+}
+
+function looksLikeBootstrapRequest(text: string): boolean {
+  return /프로젝트/.test(text)
+    && /(폴더\s*)?(생성|만들|준비)/.test(text)
+    && /(작업|수행|처리|진행|해줘|해주세요)/.test(text);
+}
+
+function extractProjectName(text: string): string | null {
+  const patterns = [
+    /["'“”‘’]([^"'“”‘’]+?)["'“”‘’]\s*프로젝트(?:\s*폴더)?\s*(?:를|을)?\s*(?:생성|만들|준비)/,
+    /["'“”‘’]?(.+?)["'“”‘’]?\s*(?:라는|이라는)\s*프로젝트(?:\s*폴더)?\s*(?:를|을)?\s*(?:생성|만들|준비)/,
+    /프로젝트\s+["'“”‘’]?([^"'“”‘’\s,，.。]+)["'“”‘’]?\s*(?:폴더)?\s*(?:를|을)?\s*(?:생성|만들|준비)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (!match) continue;
+    const candidate = normalize(match[1] ?? "");
+    return isSafeProjectName(candidate) ? candidate : null;
+  }
+  return null;
+}
+
+function extractTaskInstruction(text: string): string | null {
+  const patterns = [
+    /["'“”‘’]([^"'“”‘’]+?)["'“”‘’]\s*(?:라는|이라는)?\s*작업\s*(?:을|를)?\s*(?:수행|처리|진행|해줘|해주세요)/,
+    /([^\s"'“”‘’.,，。]+)\s*(?:라는|이라는)\s*작업\s*(?:을|를)?\s*(?:수행|처리|진행|해줘|해주세요)/,
+    /(?:세션을\s*(?:적용|붙여|연결)(?:해|해서)?\s*)([^.。]+?)(?:\s*(?:수행|처리|진행|해줘|해주세요)|$)/,
+    /(?:만들고|생성하고|준비하고)\s*(?:나서|후|뒤)?\s*([^.。]+?)(?:\s*(?:수행|처리|진행|해줘|해주세요)|$)/,
+  ];
+
+  for (const pattern of patterns) {
+    const candidate = cleanupTaskInstruction(pattern.exec(text)?.[1] ?? "");
+    if (candidate) return candidate;
+  }
+  return null;
+}
+
+function resolveProjectPath(projectRoot: string, projectName: string): string {
+  if (!isSafeProjectName(projectName)) {
+    throw new Error(`Unsafe project name: ${projectName}`);
+  }
+
+  const root = path.resolve(projectRoot);
+  const resolved = path.resolve(root, projectName);
+  const rootWithSeparator = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (resolved !== root && !resolved.startsWith(rootWithSeparator)) {
+    throw new Error(`Project path escapes project root: ${resolved}`);
+  }
+  return resolved;
+}
+
+function isSafeProjectName(projectName: string): boolean {
+  if (!PROJECT_NAME_RE.test(projectName)) return false;
+  if (projectName === "폴더" || projectName === "프로젝트") return false;
+  return !/[\\/:"*?<>|]/.test(projectName) && !projectName.includes("..");
+}
+
+function cleanupTaskInstruction(text: string): string | null {
+  const cleaned = normalize(text)
+    .replace(/^해당\s*프로젝트(?:에|에서)?\s*/, "")
+    .replace(/^세션을\s*(?:적용|붙여|연결)(?:해|해서)?\s*/, "")
+    .replace(/^(?:해|해서)\s*/, "")
+    .replace(/\s*(?:라는|이라는)\s*작업$/, "")
+    .trim();
+  if (cleaned.length < 1) return null;
+  return cleaned;
+}
+
+function normalize(text: string): string {
+  return text.trim().replace(/\s+/g, " ");
+}

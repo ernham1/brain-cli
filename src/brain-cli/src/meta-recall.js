@@ -27,7 +27,7 @@ function metaRecall(brainRoot, message, options = {}) {
   try {
     const loaded = loadMetaStrategies(brainRoot);
     strategies = loaded.strategies;
-  } catch (_err) {
+  } catch {
     return _fallbackSearch(brainRoot, message, options);
   }
 
@@ -262,7 +262,7 @@ function _saveLastStrategy(brainRoot, classification, message) {
         : null
     };
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
-  } catch (_err) {
+  } catch {
     // 기록 실패는 무시 — 핵심 기능이 아님
   }
 }

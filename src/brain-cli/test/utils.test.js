@@ -51,19 +51,31 @@ describe("calculateHash / calculateHashFromString", () => {
 describe("generateRecordId", () => {
   it("create 시 올바른 형식의 recordId를 생성해야 한다", () => {
     const id = generateRecordId("project", "myApp", []);
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    assert.match(id, /^rec_proj_myApp_\d{8}_0001$/);
+    // generateRecordId는 로컬 시간 기준 — toISOString(UTC)과 불일치 방지
+    const now = new Date();
+    const today = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0");
+    assert.match(id, /^rec_proj_myapp_\d{8}_0001$/);
     assert.ok(id.includes(today));
   });
 
   it("기존 레코드가 있으면 시퀀스 번호가 증가해야 한다", () => {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const now = new Date();
+    const today = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0");
     const existing = [
-      { recordId: `rec_proj_myApp_${today}_0001` },
-      { recordId: `rec_proj_myApp_${today}_0003` }
+      { recordId: `rec_proj_myapp_${today}_0001` },
+      { recordId: `rec_proj_myapp_${today}_0003` }
     ];
     const id = generateRecordId("project", "myApp", existing);
     assert.ok(id.endsWith("_0004"));
+  });
+
+  it("scopeId 대문자와 한글은 recordId 안전 slug로 정규화해야 한다", () => {
+    assert.match(generateRecordId("project", "AIOS", []), /^rec_proj_aios_\d{8}_0001$/);
+    assert.match(generateRecordId("topic", "에이전트-아키텍처", []), /^rec_topic_scope-[a-f0-9]{10}_\d{8}_0001$/);
   });
 
   it("scopeType 약어가 올바르게 적용되어야 한다", () => {

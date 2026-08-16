@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>팀 Engram 관리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+  header { padding: 20px 32px; border-bottom: 1px solid #1e2533; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+  .badge { font-size: 11px; background: #1a3a5c; color: #60a5fa; padding: 2px 8px; border-radius: 10px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-left: auto; }
+  .status-dot.offline { background: #ef4444; }
+
+  nav { display: flex; padding: 0 32px; border-bottom: 1px solid #1e2533; gap: 0; }
+  nav button { background: none; border: none; color: #94a3b8; padding: 14px 20px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; transition: all .15s; }
+  nav button:hover { color: #e2e8f0; }
+  nav button.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
+  main { padding: 28px 32px; max-width: 1100px; }
+
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  /* 카드 */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card { background: #161b27; border: 1px solid #1e2533; border-radius: 10px; padding: 20px; }
+  .card-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+  .card-value { font-size: 28px; font-weight: 700; color: #fff; }
+  .card-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+  /* 섹션 */
+  .section-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+
+  /* 활동 피드 */
+  .activity-group { margin-bottom: 24px; }
+  .project-name { font-size: 13px; font-weight: 600; color: #60a5fa; margin-bottom: 8px; padding: 6px 10px; background: #0d1a2e; border-radius: 6px; display: inline-block; }
+  .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1a2035; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-date { font-size: 12px; color: #475569; min-width: 80px; padding-top: 1px; }
+  .activity-body { flex: 1; }
+  .activity-title { font-size: 14px; color: #e2e8f0; }
+  .activity-summary { font-size: 12px; color: #64748b; margin-top: 3px; }
+  .activity-meta { display: flex; gap: 8px; margin-top: 4px; }
+  .type-badge { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: #1e2533; color: #94a3b8; }
+  .type-badge.decision { background: #1a3a5c; color: #60a5fa; }
+  .type-badge.rule { background: #1a3a1a; color: #4ade80; }
+  .author-badge { font-size: 11px; color: #64748b; }
+
+  /* 의사결정 */
+  .decision-item { padding: 16px; border: 1px solid #1e2533; border-radius: 8px; margin-bottom: 10px; background: #161b27; }
+  .decision-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .decision-check { color: #4ade80; font-size: 16px; }
+  .decision-check.candidate { color: #64748b; }
+  .decision-title { font-size: 14px; font-weight: 500; color: #e2e8f0; }
+  .decision-footer { display: flex; gap: 12px; font-size: 12px; color: #475569; margin-top: 6px; }
+  .decision-summary { font-size: 13px; color: #94a3b8; padding-left: 26px; }
+
+  /* 채팅 */
+  .chat-container { display: flex; flex-direction: column; height: calc(100vh - 220px); min-height: 400px; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px 0; display: flex; flex-direction: column; gap: 16px; }
+  .msg { max-width: 80%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .msg-bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+  .msg.user .msg-bubble { background: #1e40af; color: #fff; border-bottom-right-radius: 4px; }
+  .msg.assistant .msg-bubble { background: #161b27; border: 1px solid #1e2533; color: #e2e8f0; border-bottom-left-radius: 4px; }
+  .recall-result { margin-top: 8px; }
+  .recall-item { padding: 10px 12px; background: #0f1117; border: 1px solid #1e2533; border-radius: 6px; margin-top: 6px; }
+  .recall-item-title { font-size: 13px; font-weight: 500; color: #cbd5e1; }
+  .recall-item-summary { font-size: 12px; color: #64748b; margin-top: 3px; }
+  .recall-score { font-size: 11px; color: #334155; float: right; }
+  .chat-input-row { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid #1e2533; }
+  .chat-input { flex: 1; background: #161b27; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 16px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; font-family: inherit; }
+  .chat-input:focus { border-color: #3b82f6; }
+  .send-btn { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .send-btn:hover { background: #1d4ed8; }
+  .send-btn:disabled { background: #1e2533; color: #475569; cursor: not-allowed; }
+
+  .empty { color: #475569; font-size: 14px; padding: 24px 0; }
+  .loading { color: #64748b; font-size: 13px; }
+
+  .filter-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+  .filter-row select, .filter-row input { background: #161b27; border: 1px solid #1e2533; color: #e2e8f0; padding: 7px 12px; border-radius: 6px; font-size: 13px; outline: none; }
+  .filter-row select:focus, .filter-row input:focus { border-color: #3b82f6; }
+  .refresh-btn { background: #1e2533; border: none; color: #94a3b8; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .refresh-btn:hover { background: #2d3748; color: #e2e8f0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>팀 Engram</h1>
+  <span class="badge">관리 대시보드</span>
+  <span class="status-dot" id="statusDot"></span>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('activity')">활동 현황</button>
+  <button onclick="showTab('decisions')">의사결정</button>
+  <button onclick="showTab('recall')">검색 / 질문</button>
+</nav>
+
+<main>
+
+  <!-- 활동 현황 탭 -->
+  <div class="tab active" id="tab-activity">
+    <div class="cards" id="statCards"></div>
+    <div class="filter-row">
+      <select id="daysFilter" onchange="loadActivity()">
+        <option value="1">오늘</option>
+        <option value="7" selected>최근 7일</option>
+        <option value="30">최근 30일</option>
+        <option value="90">최근 3개월</option>
+      </select>
+      <input id="projectFilter" placeholder="프로젝트 필터" oninput="loadActivity()" style="width:160px" />
+      <input id="authorFilter" placeholder="팀원 필터" oninput="loadActivity()" style="width:140px" />
+      <button class="refresh-btn" onclick="loadActivity()">↻ 새로고침</button>
+    </div>
+    <div class="section-title">최근 활동</div>
+    <div id="activityFeed"><span class="loading">불러오는 중...</span></div>
+  </div>
+
+  <!-- 의사결정 탭 -->
+  <div class="tab" id="tab-decisions">
+    <div class="filter-row">
+      <input id="decisionProjectFilter" placeholder="프로젝트 필터" oninput="loadDecisions()" style="width:200px" />
+      <button class="refresh-btn" onclick="loadDecisions()">↻ 새로고침</button>
+    </div>
+    <div class="section-title">의사결정 로그</div>
+    <div id="decisionFeed"><span class="loading">불러오는 중...</span></div>
+  </div>
+
+  <!-- 검색/질문 탭 -->
+  <div class="tab" id="tab-recall">
+    <div class="chat-container">
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg assistant">
+          <div class="msg-bubble">안녕하세요. 팀 Brain에 저장된 내용을 검색합니다. 키워드나 질문을 입력하세요.<br><br>예시: "clo-telegram 결정 이유", "버그 수정 이력", "온보딩 가이드"</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chatInput" rows="1" placeholder="질문이나 키워드 입력..." onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendQuery()">검색</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const BASE = location.origin;
+
+// --- 탭 전환 ---
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'activity') loadActivity();
+  if (name === 'decisions') loadDecisions();
+}
+
+// --- 서버 상태 ---
+async function checkHealth() {
+  try {
+    const r = await fetch(BASE + '/api/health');
+    const d = await r.json();
+    document.getElementById('statusDot').className = 'status-dot' + (d.brainReady ? '' : ' offline');
+  } catch { document.getElementById('statusDot').className = 'status-dot offline'; }
+}
+
+// --- 활동 현황 ---
+async function loadActivity() {
+  const days = document.getElementById('daysFilter').value;
+  const project = document.getElementById('projectFilter').value.trim();
+  const author = document.getElementById('authorFilter').value.trim();
+
+  const params = new URLSearchParams({ days });
+  if (project) params.set('project', project);
+  if (author) params.set('author', author);
+
+  const feed = document.getElementById('activityFeed');
+  feed.innerHTML = '<span class="loading">불러오는 중...</span>';
+
+  try {
+    // 활동 기록 + 등록 프로젝트 목록 병렬 로드
+    const [actRes, cfgRes] = await Promise.all([
+      fetch(`${BASE}/api/admin/activity?${params}`),
+      fetch(`${BASE}/api/team/config`)
+    ]);
+    const d = await actRes.json();
+    const cfg = await cfgRes.json();
+    const registeredProjects = Object.keys(cfg.config?.projects || {});
+
+    // 통계 카드
+    const byProject = {};
+    const byType = {};
+    for (const rec of d.records) {
+      byProject[rec.scopeId] = (byProject[rec.scopeId] || 0) + 1;
+      byType[rec.type] = (byType[rec.type] || 0) + 1;
+    }
+    document.getElementById('statCards').innerHTML = `
+      <div class="card"><div class="card-label">총 활동 기록</div><div class="card-value">${d.total}</div><div class="card-sub">최근 ${days}일</div></div>
+      <div class="card"><div class="card-label">등록 프로젝트</div><div class="card-value">${registeredProjects.length}</div><div class="card-sub">${registeredProjects.join(', ') || '—'}</div></div>
+      <div class="card"><div class="card-label">의사결정</div><div class="card-value">${byType['decision'] || 0}</div><div class="card-sub">type=decision</div></div>
+    `;
+
+    // 등록 프로젝트 기준으로 그룹 초기화 (기록 없는 프로젝트도 표시)
+    const groups = {};
+    for (const proj of registeredProjects) groups[proj] = [];
+    for (const rec of d.records) {
+      const k = rec.scopeId || 'unknown';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(rec);
+    }
+
+    feed.innerHTML = Object.entries(groups).map(([proj, items]) => `
+      <div class="activity-group">
+        <div class="project-name">${proj}</div>
+        ${items.length === 0
+          ? `<div class="activity-item"><div class="activity-date" style="color:#334155">—</div><div class="activity-body"><div class="activity-summary">이 기간 활동 없음</div></div></div>`
+          : items.map(r => `
+          <div class="activity-item">
+            <div class="activity-date">${r.updatedAt ? r.updatedAt.slice(0,10) : '—'}</div>
+            <div class="activity-body">
+              <div class="activity-title">${escHtml(r.title)}</div>
+              ${r.summary ? `<div class="activity-summary">${escHtml(r.summary)}</div>` : ''}
+              <div class="activity-meta">
+                <span class="type-badge ${r.type}">${r.type}</span>
+                ${r.author ? `<span class="author-badge">👤 ${escHtml(r.author)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  } catch (e) {
+    feed.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+  }
+}
+
+// --- 의사결정 ---
+async function loadDecisions() {
+  const project = document.getElementById('decisionProjectFilter').value.trim();
+  const params = new URLSearchParams({ topK: 50 });
+  if (project) params.set('project', project);
+
+  const feed = document.getElementById('decisionFeed');
+  feed.innerHTML = '<span class="loading">불러오는 중...</span>';
+
+  try {
+    const r = await fetch(`${BASE}/api/admin/decisions?${params}`);
+    const d = await r.json();
+
+    if (d.records.length === 0) {
+      feed.innerHTML = '<div class="empty">저장된 의사결정이 없습니다.</div>';
+      return;
+    }
+
+    feed.innerHTML = d.records.map(r => `
+      <div class="decision-item">
+        <div class="decision-header">
+          <span class="decision-check ${r.sourceType === 'user_confirmed' ? '' : 'candidate'}">
+            ${r.sourceType === 'user_confirmed' ? '✓' : '·'}
+          </span>
+          <span class="decision-title">${escHtml(r.title)}</span>
+        </div>
+        ${r.summary ? `<div class="decision-summary">${escHtml(r.summary)}</div>` : ''}
+        <div class="decision-footer">
+          <span>${r.scopeId ? '[' + r.scopeId + ']' : ''}</span>
+          ${r.author ? `<span>👤 ${escHtml(r.author)}</span>` : ''}
+          <span>${r.updatedAt ? r.updatedAt.slice(0,10) : ''}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    feed.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+  }
+}
+
+// --- 검색/채팅 ---
+async function sendQuery() {
+  const input = document.getElementById('chatInput');
+  const goal = input.value.trim();
+  if (!goal) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  input.value = '';
+
+  appendMsg('user', goal);
+  const loadingEl = appendMsg('assistant', '<span class="loading">검색 중...</span>');
+
+  try {
+    const r = await fetch(`${BASE}/api/recall`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal, topK: 8 })
+    });
+    const d = await r.json();
+    const candidates = d.results?.candidates || [];
+
+    if (candidates.length === 0) {
+      loadingEl.querySelector('.msg-bubble').innerHTML = '관련 기억이 없습니다.';
+    } else {
+      loadingEl.querySelector('.msg-bubble').innerHTML = `
+        <div>${candidates.length}건의 관련 기억을 찾았습니다.</div>
+        <div class="recall-result">
+          ${candidates.map(c => `
+            <div class="recall-item">
+              <span class="recall-score">${typeof c.score === 'number' ? c.score.toFixed(1) : c.score}</span>
+              <div class="recall-item-title">${escHtml(c.title)}</div>
+              <div class="recall-item-summary">${escHtml(c.summary || '')}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  } catch (e) {
+    loadingEl.querySelector('.msg-bubble').textContent = '오류: ' + e.message;
+  }
+
+  btn.disabled = false;
+  document.getElementById('chatMessages').scrollTop = 99999;
+}
+
+function appendMsg(role, html) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="msg-bubble">${html}</div>`;
+  container.appendChild(div);
+  container.scrollTop = 99999;
+  return div;
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// --- 초기화 ---
+checkHealth();
+loadActivity();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

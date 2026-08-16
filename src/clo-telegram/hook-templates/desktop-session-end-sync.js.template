@@ -1,0 +1,219 @@
+#!/usr/bin/env node
+"use strict";
+
+// SessionEnd hook: VS Code Claude Code session end -> local clo-telegram event file.
+// 외부 전송 없이 로컬 session-end-events.jsonl만 갱신한다.
+
+const fs = require("node:fs");
+const path = require("node:path");
+const crypto = require("node:crypto");
+
+const BRIDGE_DIR = path.join("__INSTALL_DIR__", "data", "bridge");
+const SESSION_END_EVENTS_FILE = path.join(BRIDGE_DIR, "session-end-events.jsonl");
+const ACTIVE_FILE = path.join(BRIDGE_DIR, "vscode-active.json");
+
+function normalizePath(value) {
+  return String(value || "").replace(/\\/g, "/");
+}
+
+function safeProjectName(cwd) {
+  return path.basename(normalizePath(cwd)) || "unknown";
+}
+
+function compact(value, max = 180) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function readActiveSession(cwd, sessionId) {
+  try {
+    if (!fs.existsSync(ACTIVE_FILE)) return null;
+    const active = JSON.parse(fs.readFileSync(ACTIVE_FILE, "utf-8"));
+    const sessions = Array.isArray(active.sessions) ? active.sessions : [];
+    const normalizedCwd = normalizePath(cwd).toLowerCase();
+    return sessions.find((item) => item.sessionId === sessionId)
+      || sessions.find((item) => normalizePath(item.cwd).toLowerCase() === normalizedCwd)
+      || null;
+  } catch {
+    return null;
+  }
+}
+
+function textFromAssistantMessage(entry) {
+  const message = entry && entry.message ? entry.message : entry;
+  if (!message || message.role !== "assistant") return "";
+  const content = message.content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((item) => typeof item === "string" ? item : item && item.type === "text" ? item.text : "")
+    .filter(Boolean)
+    .join(" ");
+}
+
+function extractRemainingTasks(text) {
+  const tasks = [];
+  const lines = String(text || "").split(/\r?\n/);
+  let capturing = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const lower = line.toLowerCase();
+    const headingMatch = /(남은\s*(작업|일|할\s*일|목록)|todo|next\s*steps?|다음\s*(작업|단계)|미완료)/i.test(line);
+
+    if (headingMatch) {
+      capturing = true;
+      const afterColon = line.split(/[:：]/).slice(1).join(":").trim();
+      if (afterColon) tasks.push(afterColon);
+      continue;
+    }
+
+    if (/^[-*•]\s+\[[ xX]\]\s+/.test(line) || /^[-*•]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) {
+      if (capturing || /\[[ xX]\]/.test(line) || /todo|남은|다음|미완료/i.test(line)) {
+        tasks.push(line.replace(/^[-*•]\s*/, "").replace(/^\d+[.)]\s*/, "").replace(/^\[[ xX]\]\s*/, ""));
+      }
+      continue;
+    }
+
+    if (capturing && line === "") continue;
+    if (capturing && tasks.length > 0) break;
+    if (capturing && lower) capturing = false;
+  }
+
+  return tasks
+    .map((task) => compact(task, 120))
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function unescapeJsonish(value) {
+  return String(value || "")
+    .replace(/\\"/g, "\"")
+    .replace(/\\n/g, " ")
+    .replace(/\\r/g, " ")
+    .replace(/\\t/g, " ");
+}
+
+function extractJsonStringFieldValues(text, fieldName) {
+  const values = [];
+  const source = String(text || "");
+  const fieldTokens = [`"${fieldName}"`, `'${fieldName}'`];
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const matches = fieldTokens
+      .map((token) => ({ token, index: source.indexOf(token, cursor) }))
+      .filter((item) => item.index >= 0)
+      .sort((a, b) => a.index - b.index);
+    const next = matches[0];
+    if (!next) break;
+
+    let index = next.index + next.token.length;
+    while (/\s/.test(source[index] || "")) index += 1;
+    if (source[index] !== ":") {
+      cursor = next.index + next.token.length;
+      continue;
+    }
+
+    index += 1;
+    while (/\s/.test(source[index] || "")) index += 1;
+    const quote = source[index];
+    if (quote !== "\"" && quote !== "'") {
+      cursor = index + 1;
+      continue;
+    }
+    index += 1;
+
+    let value = "";
+    let escaped = false;
+
+    for (; index < source.length; index += 1) {
+      const char = source[index];
+      if (escaped) {
+        value += `\\${char}`;
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) {
+        index += 1;
+        break;
+      }
+      value += char;
+    }
+
+    if (value.trim()) values.push(unescapeJsonish(value));
+    cursor = index;
+  }
+
+  return values;
+}
+
+function extractWorkSummary(text) {
+  const summaryValues = extractJsonStringFieldValues(text, "summary");
+  if (summaryValues.length > 0) return summaryValues.map((item) => compact(item, 180)).join("\n");
+  return compact(text, 180);
+}
+
+function extractTranscriptDetails(transcriptPath) {
+  try {
+    const filePath = normalizePath(transcriptPath || "");
+    if (!filePath || !fs.existsSync(filePath)) return { summary: "", remainingTasks: [] };
+    const lines = fs.readFileSync(filePath, "utf-8").split("\n").filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      try {
+        const text = textFromAssistantMessage(JSON.parse(lines[i]));
+        if (text) {
+          return {
+            summary: extractWorkSummary(text),
+            remainingTasks: extractRemainingTasks(text),
+          };
+        }
+      } catch {
+        // ignore malformed transcript line
+      }
+    }
+    return { summary: "", remainingTasks: [] };
+  } catch {
+    return { summary: "", remainingTasks: [] };
+  }
+}
+
+function appendEvent(event) {
+  fs.mkdirSync(path.dirname(SESSION_END_EVENTS_FILE), { recursive: true });
+  fs.appendFileSync(SESSION_END_EVENTS_FILE, `${JSON.stringify(event)}\n`, "utf-8");
+}
+
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    const data = JSON.parse(input || "{}");
+    const cwd = normalizePath(data.cwd || "");
+    const sessionId = String(data.session_id || data.sessionId || "");
+    if (!cwd || !sessionId) {
+      process.exit(0);
+      return;
+    }
+
+    const endedAt = new Date().toISOString();
+    const activeSession = readActiveSession(cwd, sessionId);
+    const details = extractTranscriptDetails(data.transcript_path || data.transcriptPath);
+    appendEvent({
+      id: crypto.createHash("sha1").update(`${sessionId}:${cwd}:${endedAt}`).digest("hex").slice(0, 16),
+      sessionId,
+      cwd,
+      projectName: activeSession && activeSession.projectName ? activeSession.projectName : safeProjectName(cwd),
+      endedAt,
+      ...(activeSession && activeSession.currentTask ? { currentTask: compact(activeSession.currentTask, 220) } : {}),
+      ...(activeSession && Array.isArray(activeSession.recentFiles) ? { recentFiles: activeSession.recentFiles.slice(-12) } : {}),
+      ...(details.summary ? { summary: details.summary } : {}),
+      ...(details.remainingTasks.length ? { remainingTasks: details.remainingTasks } : {}),
+    });
+  } catch (error) {
+    process.stderr.write(`[DesktopSessionEndSync] 오류: ${error.message}\n`);
+  }
+  process.exit(0);
+});

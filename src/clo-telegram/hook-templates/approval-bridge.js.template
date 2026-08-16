@@ -1,0 +1,110 @@
+#!/usr/bin/env node
+"use strict";
+
+// PermissionRequest hook: 데스크탑 모드
+// 1. 텔레그램에 알림만 전송 (버튼 없음)
+// 2. 즉시 패스스루 → VS Code 다이얼로그로 승인/거절
+// 3. PostToolUse hook(desktop-tool-sync.js)이 결과를 텔레그램에 반영
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+const BRIDGE_DIR = path.join("__INSTALL_DIR__", "data", "bridge");
+const PENDING_FILE = path.join(BRIDGE_DIR, "desktop-pending.json");
+
+function loadEnv() {
+  const envPath = path.join("__INSTALL_DIR__", ".env");
+  if (!fs.existsSync(envPath)) return {};
+  const lines = fs.readFileSync(envPath, "utf-8").split("\n");
+  const env = {};
+  for (const line of lines) {
+    const match = line.match(/^([A-Z_]+)=(.+)$/);
+    if (match) env[match[1]] = match[2].trim();
+  }
+  return env;
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatToolBrief(toolName, toolInput) {
+  switch (toolName) {
+    case "Bash": {
+      const cmd = String(toolInput.command || "").slice(0, 300);
+      return `💻 <code>${escapeHtml(cmd)}</code>`;
+    }
+    case "Edit": {
+      const fp = String(toolInput.file_path || "");
+      const short = fp.split(/[/\\]/).slice(-2).join("/");
+      return `🔧 <code>${escapeHtml(short)}</code>`;
+    }
+    case "Write": {
+      const fp = String(toolInput.file_path || "");
+      const short = fp.split(/[/\\]/).slice(-2).join("/");
+      return `📝 <code>${escapeHtml(short)}</code>`;
+    }
+    default:
+      return `⚠️ <code>${escapeHtml(toolName)}</code>`;
+  }
+}
+
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", async () => {
+  try {
+    const data = JSON.parse(input);
+    const toolName = data.tool_name || "Unknown";
+    const toolInput = data.tool_input || {};
+
+    const env = loadEnv();
+    const token = env.TELEGRAM_BOT_TOKEN;
+    const chatId = env.OWNER_CHAT_IDS;
+
+    if (!token || !chatId) {
+      process.exit(0);
+    }
+
+    const chatIdNum = Number(chatId.split(",")[0]);
+    const text = `🖥️ ${formatToolBrief(toolName, toolInput)}`;
+
+    try {
+      if (!fs.existsSync(BRIDGE_DIR)) {
+        fs.mkdirSync(BRIDGE_DIR, { recursive: true });
+      }
+
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatIdNum,
+          text,
+          parse_mode: "HTML",
+          disable_notification: true,
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        const messageId = resData.result?.message_id;
+        if (messageId) {
+          fs.writeFileSync(PENDING_FILE, JSON.stringify({
+            toolName,
+            chatId: chatIdNum,
+            messageId,
+            requestedAt: Date.now(),
+          }));
+        }
+      }
+    } catch {
+      // 텔레그램 전송 실패해도 VS Code 패스스루
+    }
+
+    process.exit(0);
+
+  } catch (err) {
+    process.stderr.write(`[approval-bridge] error: ${err.message}\n`);
+    process.exit(0);
+  }
+});

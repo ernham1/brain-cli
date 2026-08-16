@@ -4,7 +4,6 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { classify } = require("../src/classifier");
 const { _expandTokens } = require("../src/search");
-const { stemKorean } = require("../src/utils");
 
 // === SB02: SynonymEnhancement 테스트 ===
 
