@@ -41,7 +41,8 @@ describe("auto Brain Raw transcript reconstruction", () => {
       assert.equal(plan.totals.exactMatches, 1);
       assert.equal(fs.existsSync(path.join(root, sourceRef)), false);
 
-      const applied = await applyReconstruction(root, transcripts, { limit: 1 });
+      await assert.rejects(() => applyReconstruction(root, transcripts, { limit: 1 }), /allowlist/);
+      const applied = await applyReconstruction(root, transcripts, { limit: 1, recordIds: ["rec_topic_work-log_20260721_0001"] });
       assert.equal(applied.created.length, 1);
       assert.equal(fs.readFileSync(path.join(root, sourceRef), "utf8"), content);
     } finally {

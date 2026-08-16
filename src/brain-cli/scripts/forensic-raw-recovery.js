@@ -127,12 +127,14 @@ function scanEvidenceRoots(evidenceRoots, targetRows) {
 
 async function planRecovery(brainRoot, options = {}) {
   const root = path.resolve(brainRoot);
+  const requestedIds = new Set(options.recordIds || []);
   const peerRoots = [...new Set((options.peerRoots || []).map(peer => path.resolve(peer)))]
     .filter(peer => peer !== root && fs.existsSync(peer));
   const jsonIds = await readJsonlIds(path.join(root, "90_index", "records.jsonl"));
   const rows = readDbRows(root);
   const dbOnlyRows = rows.filter(row => !jsonIds.has(row.record_id));
   const missingRows = dbOnlyRows.filter(row => {
+    if (requestedIds.size > 0 && !requestedIds.has(row.record_id)) return false;
     const sourcePath = row.source_ref ? resolveInside(root, row.source_ref) : null;
     return !sourcePath || !fs.existsSync(sourcePath);
   });
@@ -249,6 +251,9 @@ async function planRecovery(brainRoot, options = {}) {
 }
 
 async function applyRawRecovery(brainRoot, options = {}) {
+  if (!Array.isArray(options.recordIds) || options.recordIds.length === 0) {
+    throw new Error("--apply에는 --record-id allowlist가 필요합니다");
+  }
   const plan = await planRecovery(brainRoot, options);
   const limit = Number.isFinite(options.limit) ? options.limit : Infinity;
   const eligible = plan.candidates.filter(item => ["A", "B"].includes(item.classification));
@@ -345,7 +350,7 @@ function writeQuarantineCatalog(plan, outputPath) {
   };
 }
 function parseArgs(argv) {
-  const args = { root: null, peerRoots: [], evidenceRoots: [], output: null, quarantine: null, apply: false, limit: Infinity };
+  const args = { root: null, peerRoots: [], evidenceRoots: [], output: null, quarantine: null, apply: false, limit: Infinity, recordIds: [] };
   for (const arg of argv) {
     if (arg === "--apply") args.apply = true;
     else if (arg.startsWith("--peer=")) args.peerRoots.push(arg.slice(7));
@@ -353,6 +358,7 @@ function parseArgs(argv) {
     else if (arg.startsWith("--output=")) args.output = arg.slice(9);
     else if (arg.startsWith("--quarantine=")) args.quarantine = arg.slice(13);
     else if (arg.startsWith("--limit=")) args.limit = Number(arg.slice(8));
+    else if (arg.startsWith("--record-id=")) args.recordIds.push(...arg.slice(12).split(",").filter(Boolean));
     else if (!arg.startsWith("--") && !args.root) args.root = arg;
   }
   return args;
@@ -360,7 +366,7 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.root) throw new Error("사용법: node forensic-raw-recovery.js <brainRoot> [--peer=<root>] [--evidence=<root>] [--output=<json>] [--quarantine=<jsonl>] [--apply] [--limit=N]");
+  if (!args.root) throw new Error("사용법: node forensic-raw-recovery.js <brainRoot> [--peer=<root>] [--evidence=<root>] [--output=<json>] [--quarantine=<jsonl>] [--apply --record-id=<id,...>] [--limit=N]");
   const result = args.apply
     ? await applyRawRecovery(args.root, args)
     : await planRecovery(args.root, args);

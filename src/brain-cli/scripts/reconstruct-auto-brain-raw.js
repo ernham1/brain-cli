@@ -99,7 +99,8 @@ async function readJsonIds(filePath) {
   return ids;
 }
 
-async function loadTargets(brainRoot) {
+async function loadTargets(brainRoot, options = {}) {
+  const requestedIds = new Set(options.recordIds || []);
   const jsonIds = await readJsonIds(path.join(brainRoot, "90_index", "records.jsonl"));
   const db = new Database(path.join(brainRoot, "90_index", "records.db"), { readonly: true, fileMustExist: true });
   try {
@@ -109,6 +110,7 @@ async function loadTargets(brainRoot) {
       WHERE scope_type='topic' AND scope_id='work-log'
       ORDER BY updated_at, record_id
     `).all().filter(row => {
+      if (requestedIds.size > 0 && !requestedIds.has(row.record_id)) return false;
       if (jsonIds.has(row.record_id) || !row.source_ref || !row.content_hash) return false;
       const targetPath = resolveInside(brainRoot, row.source_ref);
       return targetPath && !fs.existsSync(targetPath);
@@ -156,7 +158,7 @@ function resultData(item, block) {
 
 async function reconstructPlan(brainRoot, transcriptRoot, options = {}) {
   const root = path.resolve(brainRoot);
-  const targets = await loadTargets(root);
+  const targets = await loadTargets(root, options);
   const byActionKey = new Map();
   for (const target of targets) {
     const key = targetActionKey(target.summary);
@@ -219,6 +221,9 @@ async function reconstructPlan(brainRoot, transcriptRoot, options = {}) {
 }
 
 async function applyReconstruction(brainRoot, transcriptRoot, options = {}) {
+  if (!Array.isArray(options.recordIds) || options.recordIds.length === 0) {
+    throw new Error("--apply에는 --record-id allowlist가 필요합니다");
+  }
   const plan = await reconstructPlan(brainRoot, transcriptRoot, options);
   const limit = Number.isFinite(options.limit) ? options.limit : Infinity;
   const selected = plan.matches.slice(0, limit);
@@ -248,13 +253,14 @@ async function applyReconstruction(brainRoot, transcriptRoot, options = {}) {
 }
 
 function parseArgs(argv) {
-  const parsed = { root: null, transcripts: null, output: null, apply: false, progress: false, limit: Infinity };
+  const parsed = { root: null, transcripts: null, output: null, apply: false, progress: false, limit: Infinity, recordIds: [] };
   for (const arg of argv) {
     if (arg === "--apply") parsed.apply = true;
     else if (arg === "--progress") parsed.progress = true;
     else if (arg.startsWith("--transcripts=")) parsed.transcripts = arg.slice(14);
     else if (arg.startsWith("--output=")) parsed.output = arg.slice(9);
     else if (arg.startsWith("--limit=")) parsed.limit = Number(arg.slice(8));
+    else if (arg.startsWith("--record-id=")) parsed.recordIds.push(...arg.slice(12).split(",").filter(Boolean));
     else if (!arg.startsWith("--") && !parsed.root) parsed.root = arg;
   }
   return parsed;
@@ -262,7 +268,7 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.root || !args.transcripts) throw new Error("사용법: node reconstruct-auto-brain-raw.js <brainRoot> --transcripts=<root> [--output=<json>] [--apply] [--limit=N]");
+  if (!args.root || !args.transcripts) throw new Error("사용법: node reconstruct-auto-brain-raw.js <brainRoot> --transcripts=<root> [--output=<json>] [--apply --record-id=<id,...>] [--limit=N]");
   const result = args.apply ? await applyReconstruction(args.root, args.transcripts, args) : await reconstructPlan(args.root, args.transcripts, args);
   if (args.output) {
     const outputPath = path.resolve(args.output);

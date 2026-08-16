@@ -57,7 +57,8 @@ describe("work-log archive Raw reconstruction", () => {
       assert.equal(fs.existsSync(path.join(root, sourceRef)), false);
       assert.equal(JSON.stringify(publicReport(plan)).includes(content), false);
 
-      const applied = applyReconstruction(root, { limit: 1 });
+      assert.throws(() => applyReconstruction(root, { limit: 1 }), /allowlist/);
+      const applied = applyReconstruction(root, { limit: 1, recordIds: ["rec_topic_work-log_20260401_0001"] });
       assert.equal(applied.created.length, 1);
       assert.equal(fs.readFileSync(path.join(root, sourceRef), "utf8"), content);
     } finally {

@@ -57,7 +57,8 @@ describe("forensic Raw recovery", () => {
       assert.deepEqual(plan.byClass, { B: 1, A: 2, D: 1 });
       assert.equal(fs.existsSync(path.join(root, "10_projects/forensic-test/from-peer.md")), false);
 
-      const applied = await applyRawRecovery(root, { peerRoots: [peerRoot], limit: 3 });
+      await assert.rejects(() => applyRawRecovery(root, { peerRoots: [peerRoot], limit: 3 }), /allowlist/);
+      const applied = await applyRawRecovery(root, { peerRoots: [peerRoot], limit: 3, recordIds: plan.candidates.map(item => item.recordId) });
       assert.equal(applied.created.length, 3);
       for (const item of applied.created) {
         assert.equal(fs.existsSync(path.join(root, item.sourceRef)), true);
@@ -113,7 +114,7 @@ describe("forensic Raw recovery", () => {
       assert.equal(match.evidence.type, "external-file-exact");
       assert.equal(match.evidence.root, path.resolve(evidenceRoot));
 
-      const applied = await applyRawRecovery(root, { evidenceRoots: [evidenceRoot] });
+      const applied = await applyRawRecovery(root, { evidenceRoots: [evidenceRoot], recordIds: [match.recordId] });
       assert.equal(applied.created.length, 1);
       assert.equal(fs.readFileSync(path.join(root, match.sourceRef), "utf8"), exactContent);
       assert.equal(fs.existsSync(path.join(root, "10_projects/forensic-test/ignored.md")), false);

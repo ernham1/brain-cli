@@ -33,6 +33,10 @@ function increment(map, key) {
   map[key] = (map[key] || 0) + 1;
 }
 
+function incrementMap(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
 function readCanonicalState(brainRoot) {
   const indexDir = path.join(brainRoot, "90_index");
   const jsonl = fs.readFileSync(path.join(indexDir, "records.jsonl"), "utf8")
@@ -42,12 +46,12 @@ function readCanonicalState(brainRoot) {
   const jsonlCounts = new Map();
   const digestCounts = new Map();
   const manifestCounts = new Map();
-  for (const record of jsonl) increment(jsonlCounts, record.recordId);
+  for (const record of jsonl) incrementMap(jsonlCounts, record.recordId);
   for (const line of digest) {
     const separator = line.indexOf(" | ");
-    if (separator > 0) increment(digestCounts, line.slice(0, separator));
+    if (separator > 0) incrementMap(digestCounts, line.slice(0, separator));
   }
-  for (const entry of manifest.files || []) increment(manifestCounts, normalizeRef(entry.path));
+  for (const entry of manifest.files || []) incrementMap(manifestCounts, normalizeRef(entry.path));
   return { jsonlCounts, digestCounts, manifestCounts };
 }
 
