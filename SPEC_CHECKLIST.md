@@ -8,7 +8,7 @@
 | ID | 항목 | 스펙 근거 | 완료 기준 | 검증 방법 | 상태 | 증거 |
 |---|---|---|---|---|---|---|
 | MAX-00 | 완료 루프 보존·시작 게이트 | `00-overview.md` §전제 | 이전 SPEC/STATUS archive SHA, 전제 포함 LOOP_START exact 1건 | archive hash·저널 조회 | [x] | archive SPEC `a770a2be…`, STATUS `95a86a8a…`; LOOP_START `dj-20260816-2124-brm1` exact 1건 |
-| MAX-01 | fresh missing/exact inventory | `01-runbook.md` 순서2 | 현재 monitor missing 수와 전체 dry-run targets/exact/unmatched, source family 분류 합계가 같은 시점 기준으로 고정; H/E 0회 | monitor event·inventory JSON·dry-run report | [ ] | |
+| MAX-01 | fresh missing/exact inventory | `01-runbook.md` 순서2 | 현재 monitor missing 수와 전체 dry-run targets/exact/unmatched, source family 분류 합계가 같은 시점 기준으로 고정; H/E 0회 | monitor event·inventory JSON·dry-run report | [x] | missing 8,330=work-log 6,483+session 1,744+기타 103; session exact 89·unmatched 1,655·unique 89; monitor healthy/known 8,330/new 0; H/E 0 |
 | MAX-02 | write 도구 allowlist 잠금 | `01-runbook.md` §배치 계약 | reconstruction·canonical repair가 recordId allowlist만 적용하고 unfiltered apply를 거부; 기존 단건 JSONL repair 계약 유지 | 신규 회귀·node check·호출 체인 | [ ] | |
 | MAX-03 | exact 89 batch·rollback manifest | `01-runbook.md` §배치 계약 | fresh exact 집합 전부를 중복 없이 ≤10건 batch로 분할, 모든 후보 SHA exact·target absent·path collision 0, backup/rollback 위치 기록 | batch manifest validator | [ ] | |
 | MAX-04 | exact 89건 배치 복원 | `01-runbook.md` 순서5 | 각 batch에서 allowlist Raw 생성·canonical 보강·대상 5중 일치·안정 monitor new 0; 실패 batch에서 즉시 중단 | batch별 apply/audit/monitor 보고서 | [ ] | |
