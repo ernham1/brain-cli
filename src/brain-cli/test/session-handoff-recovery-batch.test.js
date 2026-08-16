@@ -8,7 +8,7 @@ const path = require("path");
 const { init } = require("../src/init");
 const { getDb, upsertRecord } = require("../src/db");
 const { calculateHash, generateDigestLine, writeJsonl } = require("../src/utils");
-const { auditTargets, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw } = require("../scripts/run-session-handoff-recovery-batch");
+const { auditTargets, canonicalRecoveryCounts, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw } = require("../scripts/run-session-handoff-recovery-batch");
 
 describe("session handoff recovery batch", () => {
   it("parses exactly one batch contract", () => {
@@ -25,6 +25,11 @@ describe("session handoff recovery batch", () => {
       batchId: "B02",
       outputDir: "C:\\reports"
     });
+  });
+
+  it("accepts a mix of newly recovered and already-canonical records", () => {
+    assert.deepEqual(canonicalRecoveryCounts({ recovered: 5 }, 9), { recovered: 5, alreadyPresent: 4 });
+    assert.throws(() => canonicalRecoveryCounts({ recovered: 10 }, 9), /유효하지/);
   });
 
   it("retries only when every new issue is an already-resolved index tmp", () => {

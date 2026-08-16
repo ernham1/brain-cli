@@ -78,6 +78,18 @@ function rollbackCreatedRaw(brainRoot, created) {
   }
 }
 
+function canonicalRecoveryCounts(canonical, total) {
+  const recovered = canonical && canonical.recovered;
+  if (!Number.isInteger(recovered) || recovered < 0 || recovered > total) {
+    throw new Error(`canonical 복구 수가 유효하지 않습니다: ${recovered}/${total}`);
+  }
+  return { recovered, alreadyPresent: total - recovered };
+}
+
+function readJsonIfExists(filePath) {
+  return fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf8")) : null;
+}
+
 function isResolvedIndexTmpOnly(brainRoot, monitor) {
   const issues = Array.isArray(monitor.newIssues) ? monitor.newIssues : [];
   return monitor.status === "alert" && issues.length > 0 && issues.every(item => {
@@ -116,7 +128,8 @@ function main() {
   if (existingCount > 0 && existingCount < batch.recordIds.length) {
     throw new Error(`${batch.batchId} 대상 Raw가 일부만 존재합니다: ${existingCount}/${batch.recordIds.length}`);
   }
-  writeReport(outputDir, "pre-state.json", { batchId: batch.batchId, items: preState });
+  const stateReportName = fs.existsSync(path.join(outputDir, "pre-state.json")) ? "resume-state.json" : "pre-state.json";
+  writeReport(outputDir, stateReportName, { batchId: batch.batchId, items: preState });
 
   if (existingCount === batch.recordIds.length) {
     const targetAudit = auditTargets(brainRoot, batch.recordIds);
@@ -129,11 +142,18 @@ function main() {
     if (monitor.status !== "healthy" || monitor.newIssueCount !== 0) {
       throw new Error(`${batch.batchId} monitor 실패: status=${monitor.status}, new=${monitor.newIssueCount}`);
     }
+    const priorRaw = readJsonIfExists(path.join(outputDir, "raw-apply.json"));
+    const priorCanonical = readJsonIfExists(path.join(outputDir, "canonical-apply.json"));
+    const canonicalCounts = priorCanonical
+      ? canonicalRecoveryCounts(priorCanonical, batch.recordIds.length)
+      : { recovered: 0, alreadyPresent: batch.recordIds.length };
     const result = {
       batchId: batch.batchId,
       resumed: true,
-      created: batch.recordIds.length,
-      recovered: batch.recordIds.length,
+      created: priorRaw && Array.isArray(priorRaw.created) ? priorRaw.created.length : batch.recordIds.length,
+      canonicalRecovered: canonicalCounts.recovered,
+      canonicalAlreadyPresent: canonicalCounts.alreadyPresent,
+      backupDir: priorCanonical ? priorCanonical.backupDir : null,
       allExact: true,
       monitor: {
         totalIssues: monitor.totals.issues,
@@ -162,9 +182,7 @@ function main() {
     throw error;
   }
   writeReport(outputDir, "canonical-apply.json", canonical);
-  if (canonical.recovered !== batch.recordIds.length) {
-    throw new Error(`${batch.batchId} canonical 수 불일치: ${canonical.recovered}`);
-  }
+  const canonicalCounts = canonicalRecoveryCounts(canonical, batch.recordIds.length);
 
   const targetAudit = auditTargets(brainRoot, batch.recordIds);
   writeReport(outputDir, "target-audit.json", { batchId: batch.batchId, ...targetAudit });
@@ -181,7 +199,8 @@ function main() {
   const result = {
     batchId: batch.batchId,
     created: raw.created.length,
-    recovered: canonical.recovered,
+    canonicalRecovered: canonicalCounts.recovered,
+    canonicalAlreadyPresent: canonicalCounts.alreadyPresent,
     backupDir: canonical.backupDir,
     allExact: targetAudit.allExact,
     monitor: {
@@ -199,4 +218,4 @@ if (require.main === module) {
   try { main(); } catch (error) { console.error(error); process.exit(1); }
 }
 
-module.exports = { auditTargets, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw, runStableMonitor };
+module.exports = { auditTargets, canonicalRecoveryCounts, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw, runStableMonitor };
