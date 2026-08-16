@@ -78,6 +78,22 @@ function rollbackCreatedRaw(brainRoot, created) {
   }
 }
 
+function isResolvedIndexTmpOnly(brainRoot, monitor) {
+  const issues = Array.isArray(monitor.newIssues) ? monitor.newIssues : [];
+  return monitor.status === "alert" && issues.length > 0 && issues.every(item => {
+    if (item.type !== "index-tmp" || !String(item.key).startsWith("index-tmp:")) return false;
+    const fileName = String(item.key).slice("index-tmp:".length);
+    return !fs.existsSync(path.join(brainRoot, "90_index", fileName));
+  });
+}
+
+function runStableMonitor(brainRoot) {
+  const first = publicMonitorResult(runIntegrityMonitor(brainRoot, { recordEvent: true }));
+  if (!isResolvedIndexTmpOnly(brainRoot, first)) return { monitor: first, attempts: 1, transient: null };
+  const second = publicMonitorResult(runIntegrityMonitor(brainRoot, { recordEvent: true }));
+  return { monitor: second, attempts: 2, transient: first };
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.root || !args.transcripts || !args.manifest || !args.batchId || !args.outputDir) {
@@ -106,7 +122,9 @@ function main() {
     const targetAudit = auditTargets(brainRoot, batch.recordIds);
     writeReport(outputDir, "target-audit.json", { batchId: batch.batchId, ...targetAudit });
     if (!targetAudit.allExact) throw new Error(`${batch.batchId} 기존 대상 5중 감사 실패`);
-    const monitor = publicMonitorResult(runIntegrityMonitor(brainRoot, { recordEvent: true }));
+    const monitorResult = runStableMonitor(brainRoot);
+    const monitor = monitorResult.monitor;
+    if (monitorResult.transient) writeReport(outputDir, "monitor-transient.json", monitorResult.transient);
     writeReport(outputDir, "monitor.json", monitor);
     if (monitor.status !== "healthy" || monitor.newIssueCount !== 0) {
       throw new Error(`${batch.batchId} monitor 실패: status=${monitor.status}, new=${monitor.newIssueCount}`);
@@ -121,7 +139,8 @@ function main() {
         totalIssues: monitor.totals.issues,
         knownIssues: monitor.knownIssueCount,
         newIssues: monitor.newIssueCount
-      }
+      },
+      monitorAttempts: monitorResult.attempts
     };
     writeReport(outputDir, "result.json", result);
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
@@ -151,7 +170,9 @@ function main() {
   writeReport(outputDir, "target-audit.json", { batchId: batch.batchId, ...targetAudit });
   if (!targetAudit.allExact) throw new Error(`${batch.batchId} 5중 감사 실패`);
 
-  const monitor = publicMonitorResult(runIntegrityMonitor(brainRoot, { recordEvent: true }));
+  const monitorResult = runStableMonitor(brainRoot);
+  const monitor = monitorResult.monitor;
+  if (monitorResult.transient) writeReport(outputDir, "monitor-transient.json", monitorResult.transient);
   writeReport(outputDir, "monitor.json", monitor);
   if (monitor.status !== "healthy" || monitor.newIssueCount !== 0) {
     throw new Error(`${batch.batchId} monitor 실패: status=${monitor.status}, new=${monitor.newIssueCount}`);
@@ -167,7 +188,8 @@ function main() {
       totalIssues: monitor.totals.issues,
       knownIssues: monitor.knownIssueCount,
       newIssues: monitor.newIssueCount
-    }
+    },
+    monitorAttempts: monitorResult.attempts
   };
   writeReport(outputDir, "result.json", result);
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
@@ -177,4 +199,4 @@ if (require.main === module) {
   try { main(); } catch (error) { console.error(error); process.exit(1); }
 }
 
-module.exports = { auditTargets, parseArgs, rollbackCreatedRaw };
+module.exports = { auditTargets, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw, runStableMonitor };

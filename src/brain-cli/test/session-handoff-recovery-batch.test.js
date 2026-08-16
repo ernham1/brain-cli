@@ -8,7 +8,7 @@ const path = require("path");
 const { init } = require("../src/init");
 const { getDb, upsertRecord } = require("../src/db");
 const { calculateHash, generateDigestLine, writeJsonl } = require("../src/utils");
-const { auditTargets, parseArgs, rollbackCreatedRaw } = require("../scripts/run-session-handoff-recovery-batch");
+const { auditTargets, isResolvedIndexTmpOnly, parseArgs, rollbackCreatedRaw } = require("../scripts/run-session-handoff-recovery-batch");
 
 describe("session handoff recovery batch", () => {
   it("parses exactly one batch contract", () => {
@@ -25,6 +25,20 @@ describe("session handoff recovery batch", () => {
       batchId: "B02",
       outputDir: "C:\\reports"
     });
+  });
+
+  it("retries only when every new issue is an already-resolved index tmp", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "brain-batch-monitor-"));
+    try {
+      fs.mkdirSync(path.join(root, "90_index"), { recursive: true });
+      const monitor = { status: "alert", newIssues: [{ type: "index-tmp", key: "index-tmp:records.jsonl.tmp" }] };
+      assert.equal(isResolvedIndexTmpOnly(root, monitor), true);
+      fs.writeFileSync(path.join(root, "90_index", "records.jsonl.tmp"), "pending", "utf8");
+      assert.equal(isResolvedIndexTmpOnly(root, monitor), false);
+      assert.equal(isResolvedIndexTmpOnly(root, { status: "alert", newIssues: [{ type: "missing-raw", key: "missing-raw:x" }] }), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("audits five-way equality and only rolls back exact files", () => {
