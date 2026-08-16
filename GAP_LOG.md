@@ -7,7 +7,7 @@
 | GAP-FR-04 | #성능 | P2 | 명시적 전체 `brain-cli validate`는 운영 데이터·시스템 부하에 따라 약 100초 소요 | 정기 감사 경로의 캐시/증분화 검토; 저장 경로는 변경 sourceRef 증분 검증 유지 |
 | GAP-FR-05 | #보안 | P1 | 과거 work-log archive에 민감 설정값이 포함될 수 있음 | 관련 자격증명 회전 여부 확인 후 cold archive 접근통제 |
 | GAP-RM-03 | #외부알림 | P2 | 무결성 alert는 health/local event까지만 노출되고 Telegram 자동 발송은 없음 | external-send 승인 후 알림 연결 |
-| GAP-OPR-01 | #데이터복구 | P1 | 신규 missing-raw 2건(`rec_proj_clo-handoff_20260722_0283`, `rec_proj_clo-handoff_20260811_0707`)은 transcript는 있으나 당시 git status 원문이 없어 contentHash exact 재구성 불가 | 원본 사본 또는 당시 git status 근거 발견 시 exact hash 일치로만 복원; 합성·삭제 금지 |
+
 
 ## 보류
 
@@ -16,6 +16,7 @@
 | GAP-BM-08 | #보안승인 | P1 | 공식 Brain Wiki compile은 Brain Raw를 외부 Claude CLI로 전송 | 명시 승인 없는 외부 전송은 범위 밖 |
 
 ## 해결됨
+- GAP-OPR-01: 인접 생존 Raw에 보존된 당시 최근 Brain 5건 snapshot과 세션 transcript를 결합해 두 missing Raw를 contentHash exact로 복원했다. Raw·DB·JSONL·digest·manifest 각각 1건, monitor issues 8,330/known 8,330/new 0, 전체 validate PASS를 확인했다. 범위 밖 exact 후보 89건은 미적용.
 - GAP-FR-14: clo-telegram 기존 실패 3건을 해결했다. `C:/Projects`를 보고 대상에서 제외하던 `D:/Projects` 고정 판정을 Projects 경계 기반으로 바꾸고, 실제 종료 hook이 대기 중일 때 합성 disappearance 이벤트가 quiet 기준시각을 덮어쓰지 않게 했다. 기존 실패 3건 16/16, 전체 218/218, build, PM2 online·watch enabled 확인.
 - GAP-FR-15: 최근 미커밋 Decision Pipeline·SDK 세션 처리로 발생한 가상 `user...` 답변 혼입 회귀를 수정했다. 일반 대화 브리프 주입 0건, 번호 지정 시만 복원, 결정 브리프·오염 assistant 턴 신규 프롬프트 제외, 출력 저장 전 역할 누출 차단, 오염 SDK 세션 비파괴 격리·재생성, runner 토큰 로그 차단을 적용했다. 빌드·핵심 15 tests·전체 218 tests(현재 218 pass)·운영 dist 스모크·PM2 online 확인.
 - GAP-RM-05: PM2 원문 환경 출력 금지·allowlist 진단 적용, 내부·Telegram 토큰 회전, OpenAI 로컬 제거·STT off, 전체 701 tests와 실송신 검증 완료. 공급자 OpenAI 키 삭제는 이사님 결정 dj-20260722-1412-oaix로 제외.
