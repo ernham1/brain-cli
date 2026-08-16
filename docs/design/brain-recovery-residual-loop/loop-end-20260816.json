@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2116-brf2",
+  "ts": "2026-08-16T21:16:00.000+09:00",
+  "session": "codex-desktop-brain-recovery-residual-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_END] #데이터복구 Brain 복구 잔여 후속 5/5 종료 판정. 두 missing Raw를 contentHash exact로 복원해 Raw·DB·JSONL·digest·manifest 5중 일치, validate PASS, integrity 8,330/known 8,330/new 0을 확인했다. 범위 밖 exact 후보 89건은 미적용했다. TeleClo audit은 low 1→0, Brain CLI high 4는 모두 fixAvailable=false로 force 없이 보존했다. Brain 716/716·TeleClo 222/222·빌드/lint/server/embedding, 서비스·health·Brain record rec_proj_brain_20260816_0007·Wiki를 실물 확인했다. H/E 접근·합성·삭제·force·main 변경은 0회다.",
+  "options": [
+    "증거 충족으로 5/5 종료",
+    "증거 부족으로 루프 재개"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

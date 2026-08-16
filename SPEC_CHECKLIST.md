@@ -11,7 +11,7 @@
 | RES-01 | Raw 2건 exact 증거 재탐색 | GAP-OPR-01 | 허용된 Brain/복구/Git/세션 증거 경로를 target ID·sourceRef·contentHash로 전수 검색하고 후보별 SHA 판정; H/E 0회 | 검색 manifest·후보 hash 보고서 | [x] | targeted plan: targets 2 / exact 2 / unmatched 0; SHA `6734f02b…`, `5677ad10…`; adjacent Raw `0282`,`0706`; 회귀 2/2; 범위 밖 89건 미적용 |
 | RES-02 | exact 발견분 조건부 복구 | `01-runbook.md` §조건부 적용 | 발견분만 사전 백업 후 hash exact로 Raw/canonical 복구; 미발견분은 합성·삭제 0, integrity issue 비증가 | backup hash·target audit·monitor·validate | [x] | pre-state 부재 2건 보존; canonical backup `_backup-memory-integrity-2026-08-16T11-58-42-565Z`; 5중 audit allExact; monitor 8,330/known 8,330/new 0; validate PASS |
 | RES-03 | 의존성 잔여 non-force 처리 | 운영 완료 보고 | npm transport 실측, 세 패키지 audit/ls; 호환 가능한 수정만 적용; fix 없음은 실행경로·상위 이슈 근거; 전체 회귀 신규 실패 0 | npm view/audit/ls·embedding·test/build/lint | [x] | clo low 1→0 (`tsx 4.23.12`,`esbuild 0.28.2`); server 0; CLI high4 모두 fixAvailable=false·critical0, embedding 384 finite; Brain 716/716·lint, clo 222/222·build, server syntax PASS; force 0 |
-| RES-04 | 종료 독립 감사·기억 갱신 | spec-loop 종료 게이트 | 5/5 증거 실물 대조, 서비스/health/원격 recovery ref 불변, LOOP_END·Brain project_state·Wiki 반영 | fresh audit JSON·저널·recall | [ ] | |
+| RES-04 | 종료 독립 감사·기억 갱신 | spec-loop 종료 게이트 | 5/5 증거 실물 대조, 서비스/health/원격 recovery ref 불변, LOOP_END·Brain project_state·Wiki 반영 | fresh audit JSON·저널·recall | [x] | `RES-04-pre-end-audit.json`; health ok·monitor 8,330/known 8,330/new 0; Brain `rec_proj_brain_20260816_0007` recall·Wiki 확인; LOOP_END `dj-20260816-2116-brf2` |
 
 ## 범위 잠금
 
