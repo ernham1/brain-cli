@@ -491,7 +491,7 @@ function isVectorAvailable(db) {
  * @returns {Promise<Float32Array>}
  */
 async function embedText(text, role = "query") {
-  const { pipeline } = await import("@xenova/transformers");
+  const { pipeline } = await import("@huggingface/transformers");
   // 싱글톤 파이프라인 캐시
   if (!embedText._pipe) {
     embedText._pipe = await pipeline(

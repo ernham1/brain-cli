@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-1900-brr3",
+  "ts": "2026-08-16T19:00:46.335+09:00",
+  "session": "codex-desktop-brain-repository-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_END] #데이터복구 Brain 저장소 복구 체크리스트 15/15 종료 판정. C:\\Brain-Recovery\\20260816의 복구 커밋 50a58aecddfe5de86a666c179e2d1c9a00246d7d, 태그 brain-recovery-20260816, 검증 번들, 재복제 fsck, 핵심 12파일 해시, Brain CLI 712/712, 텔레클로 222/222, 격리 health-write-recall 스모크를 확인했다. 동일 세션 자기감사이며 push·운영 전환·운영 데이터 수리는 범위 밖이다. 의존성 audit 취약점과 운영 Brain 무결성 경고는 별도 후속 루프로 남긴다.",
+  "options": [
+    "저장소 복구 루프를 완료로 종료하고 운영 전환·데이터 무결성 수리는 별도 승인 루프로 분리",
+    "저장소 복구 루프를 계속 열어 둠"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

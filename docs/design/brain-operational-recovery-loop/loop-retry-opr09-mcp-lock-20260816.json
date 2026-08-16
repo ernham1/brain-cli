@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-2000-bor4",
+  "ts": "2026-08-16T20:00:38.132+09:00",
+  "session": "codex-desktop-brain-operational-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_RETRY] OPR-09 Brain CLI npm ci가 active VS Code Claude Brain MCP 2개가 잡은 better_sqlite3.node에서 EPERM 2회 발생했다. 외부 세션 MCP 강제종료는 명시 승인 필요로 차단됐다. 서버/clo는 npm ci 완료하고, Brain CLI는 OPR-05 clean install·715 tests를 통과한 격리 node_modules를 비삭제 배치했다. native SHA-256 일치·npm ls --all exit 0·health ok를 확인했으며 전체 운영 회귀로 최종 판정한다.",
+  "options": [
+    "외부 MCP 무중단으로 검증된 clean tree 배치 후 전체 회귀",
+    "다른 Claude 세션 MCP 강제종료"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

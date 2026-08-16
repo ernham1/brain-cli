@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-1949-bor3",
+  "ts": "2026-08-16T19:46:28.584+09:00",
+  "session": "codex-desktop-brain-operational-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_RETRY] OPR-07 canonical dry-run 결과 recoverable=1, dbOnlyMissingSource=8235로 확인됐다. exact Raw 3건 중 known 2건은 canonical JSONL/digest/manifest가 이미 존재해 Raw만 복원하면 되고, 신규 0084 한 건만 canonical 추가가 필요하다. dry-run이 식별한 1건만 canonical 복구한다.",
+  "options": [
+    "dry-run 식별 canonical 1건만 적용",
+    "근거 없이 canonical 3건 쓰기 강제"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

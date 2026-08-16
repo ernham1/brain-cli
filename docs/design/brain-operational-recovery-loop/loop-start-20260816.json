@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-1917-bor1",
+  "ts": "2026-08-16T19:17:09.919+09:00",
+  "session": "codex-desktop-brain-operational-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_START] #데이터복구 Brain 운영 전체 복구 14항목 자율 시작. 익숙한 타입 근거: GAP-REC-01~07 및 직전 완료 루프. 전제: dj-20260816-1900-brr3. 신규 무결성 4건 exact 복구, known 8,332건 합성 금지, 운영 Git 복원, dependency 보안, PM2 4서비스, recovery branch/tag 원격 백업, live Brain/Telegram 스모크를 수행한다. main 병합·force push·증거 삭제는 제외한다.",
+  "options": [
+    "운영 경로 유지 방식으로 전체 복구 루프 시작",
+    "저장소 복구 상태에서 중단"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

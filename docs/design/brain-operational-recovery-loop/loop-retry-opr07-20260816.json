@@ -1,0 +1,18 @@
+{
+  "id": "dj-20260816-1946-bor2",
+  "ts": "2026-08-16T19:44:04.180+09:00",
+  "session": "codex-desktop-brain-operational-recovery-20260816",
+  "project": "brain",
+  "decisionType": "ops",
+  "question": "[LOOP_RETRY] OPR-07 사전감사에서 exactMatches 3건이 신규 missing-raw 3건과 동일하지 않음을 확인했다. 실제 교집합은 신규 1건이고 나머지 2건은 known 결손이다. exact-only 계약을 유지해 DB 신규 1건+Raw 신규 1건+Raw known 2건만 복구하고, 원문 없는 신규 Raw 2건은 GAP-OPR-01로 보존한다. 합성·삭제·baseline 재정의는 하지 않는다.",
+  "options": [
+    "증거 있는 4개 변경만 적용하고 잔여 신규 2건 보존",
+    "근거 없는 Raw 합성으로 new 0 달성"
+  ],
+  "irreversible": false,
+  "irreversibleClass": null,
+  "mode": "shadow",
+  "blind": true,
+  "twin": null,
+  "human": null
+}

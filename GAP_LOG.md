@@ -7,6 +7,7 @@
 | GAP-FR-04 | #성능 | P2 | 명시적 전체 `brain-cli validate`는 운영 데이터·시스템 부하에 따라 약 100초 소요 | 정기 감사 경로의 캐시/증분화 검토; 저장 경로는 변경 sourceRef 증분 검증 유지 |
 | GAP-FR-05 | #보안 | P1 | 과거 work-log archive에 민감 설정값이 포함될 수 있음 | 관련 자격증명 회전 여부 확인 후 cold archive 접근통제 |
 | GAP-RM-03 | #외부알림 | P2 | 무결성 alert는 health/local event까지만 노출되고 Telegram 자동 발송은 없음 | external-send 승인 후 알림 연결 |
+| GAP-OPR-01 | #데이터복구 | P1 | 신규 missing-raw 2건(`rec_proj_clo-handoff_20260722_0283`, `rec_proj_clo-handoff_20260811_0707`)은 transcript는 있으나 당시 git status 원문이 없어 contentHash exact 재구성 불가 | 원본 사본 또는 당시 git status 근거 발견 시 exact hash 일치로만 복원; 합성·삭제 금지 |
 
 ## 보류
 

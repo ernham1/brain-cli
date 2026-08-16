@@ -1,10 +1,10 @@
-# 루프 상태: Brain 저장소 재해복구
-갱신: 2026-08-16
+# 루프 상태: Brain 운영 전체 복구
+갱신: 2026-08-16 20:05
 상태: 진행 중
-진행: 13/15 완료
-현재: REC-12 — 복구 체크포인트·bundle
-최근 완료: REC-11 별도 포트 health→write→recall·Raw/index·cleanup 통과
-다음: REC-12 — provenance 포함 commit·tag·bundle·재-clone fsck
-막힘: 없음 — H/E 제외, `C:\Brain-Recovery\20260816` 사용
-게이트 저널: 시작 dj-20260816-1731-brr1 / 재시도 dj-20260816-1755-brr2 / 종료 없음
-운영 영향: 없음 — C: 격리 경로에 읽기 전용 증거 사본만 생성, 원본·서비스·데이터 미변경
+진행: 10/14 완료
+현재: OPR-10 — 복구 checkpoint·원격 안전망
+최근 완료: OPR-09 npm ls 3/3·Brain 715/715·clo 222/222·embedding 384·health ok
+다음: OPR-11 — PM2 서비스 정상화
+막힘: 전체 진행에는 없음 — 신규 Raw 2건은 exact 원문 부재로 GAP-OPR-01 보존
+게이트 저널: 시작 dj-20260816-1917-bor1 / 종료 없음
+운영 영향: Brain writer 2개 임시 재기동·3849 health ok; monitor/clo는 OPR-11까지 stopped
